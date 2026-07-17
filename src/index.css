@@ -381,10 +381,20 @@
 .landing-page { max-width: 1100px; margin: 0 auto; padding: 0 1.25rem 3rem; }
 .landing-header { position: sticky; top: 0; z-index: 40; backdrop-filter: blur(10px); background: rgba(238,242,235,.82); border-bottom: 1px solid var(--cor-borda); }
 .landing-header-inner { max-width: 1100px; margin: 0 auto; padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; }
-.landing-logo { color: var(--cor-dourado); font-size: 1.15rem; letter-spacing: .01em; }
-.landing-link { font-size: .85rem; color: var(--cor-texto-medio); }
+.landing-logo { color: var(--cor-dourado); font-size: 1.15rem; letter-spacing: .01em; white-space: nowrap; }
+.landing-link { font-size: .85rem; color: var(--cor-texto-medio); white-space: nowrap; }
 .landing-link:hover { color: var(--cor-dourado); }
-.landing-cta-small { padding: .5rem 1rem !important; font-size: .82rem !important; }
+.landing-cta-small { padding: .5rem 1rem !important; font-size: .82rem !important; white-space: nowrap; }
+
+/* Cabeçalho compacto no celular */
+@media (max-width: 640px) {
+  .landing-header-inner { padding: .7rem .9rem; gap: .5rem; }
+  .landing-logo { font-size: .95rem; }
+  .landing-header nav { gap: .55rem; }
+  .landing-link { font-size: .8rem; }
+  .landing-cta-small { padding: .45rem .7rem !important; font-size: .74rem !important; }
+  .landing-hero { padding: 2.5rem 0 2rem; }
+}
 
 .landing-hero { text-align: center; padding: 4rem 0 3rem; max-width: 42rem; margin: 0 auto; }
 .landing-hero-title { font-size: clamp(2rem, 5vw, 3rem); line-height: 1.12; margin-bottom: 1rem; text-wrap: balance; }
