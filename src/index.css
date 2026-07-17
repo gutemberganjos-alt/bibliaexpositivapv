@@ -378,21 +378,25 @@
 /* ============================================================
    Landing page pública ("/")
    ============================================================ */
-.landing-page { max-width: 1100px; margin: 0 auto; padding: 0 1.25rem 3rem; }
-.landing-header { position: sticky; top: 0; z-index: 40; backdrop-filter: blur(10px); background: rgba(238,242,235,.82); border-bottom: 1px solid var(--cor-borda); }
-.landing-header-inner { max-width: 1100px; margin: 0 auto; padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; }
+.landing-page { width: 100%; }
+/* Faixa do topo ocupa a largura toda (de ponta a ponta); o miolo é centralizado */
+.landing-header { position: sticky; top: 0; z-index: 40; backdrop-filter: blur(10px); background: rgba(238,242,235,.85); border-bottom: 1px solid var(--cor-borda); box-shadow: 0 1px 12px rgba(24,59,50,.05); }
+.landing-header-inner { max-width: 1100px; margin: 0 auto; padding: .8rem 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.landing-nav { display: flex; align-items: center; gap: 1rem; flex: none; }
+.landing-container { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem 3rem; }
 .landing-logo { color: var(--cor-dourado); font-size: 1.15rem; letter-spacing: .01em; white-space: nowrap; }
 .landing-link { font-size: .85rem; color: var(--cor-texto-medio); white-space: nowrap; }
 .landing-link:hover { color: var(--cor-dourado); }
-.landing-cta-small { padding: .5rem 1rem !important; font-size: .82rem !important; white-space: nowrap; }
+.landing-cta-small { padding: .55rem 1.1rem !important; font-size: .8rem !important; letter-spacing: .05em !important; white-space: nowrap; box-shadow: 0 4px 12px rgba(169,71,57,.2) !important; }
 
 /* Cabeçalho compacto no celular */
 @media (max-width: 640px) {
-  .landing-header-inner { padding: .7rem .9rem; gap: .5rem; }
-  .landing-logo { font-size: .95rem; }
-  .landing-header nav { gap: .55rem; }
-  .landing-link { font-size: .8rem; }
-  .landing-cta-small { padding: .45rem .7rem !important; font-size: .74rem !important; }
+  .landing-header-inner { padding: .7rem 1rem; gap: .6rem; }
+  .landing-container { padding: 0 1rem 2.5rem; }
+  .landing-logo { font-size: 1rem; }
+  .landing-nav { gap: .7rem; }
+  .landing-link { font-size: .82rem; }
+  .landing-cta-small { padding: .5rem .85rem !important; font-size: .74rem !important; letter-spacing: .03em !important; }
   .landing-hero { padding: 2.5rem 0 2rem; }
 }
 
@@ -413,7 +417,7 @@
 .landing-benefits-list li { display: flex; align-items: center; gap: .55rem; color: var(--cor-texto-medio); font-size: .86rem; }
 .landing-benefits-list svg { color: var(--cor-dourado); flex: none; }
 
-.landing-footer { max-width: 1100px; margin: 0 auto; padding: 2rem 1.25rem 3rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; border-top: 1px solid var(--cor-borda); color: var(--cor-texto-dim); font-size: .8rem; }
+.landing-footer { margin-top: 1rem; padding: 2rem 0 1rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; border-top: 1px solid var(--cor-borda); color: var(--cor-texto-dim); font-size: .8rem; }
 .landing-footer nav { display: flex; gap: 1.25rem; }
 .landing-footer a { color: var(--cor-texto-dim); }
 .landing-footer a:hover { color: var(--cor-dourado); }

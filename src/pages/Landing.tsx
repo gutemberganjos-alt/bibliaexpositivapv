@@ -25,17 +25,18 @@ const DESTAQUES_MODOS = MODOS.filter((m) =>
 export default function Landing() {
   return (
     <div className="landing-page">
-      {/* Header simples */}
+      {/* Header full-width: a faixa vai de ponta a ponta, o conteúdo interno é centralizado */}
       <header className="landing-header">
         <div className="landing-header-inner">
           <span className="landing-logo font-['Playfair_Display']">Bíblia Expositiva</span>
-          <nav className="flex items-center gap-3">
+          <nav className="landing-nav">
             <Link to="/login" className="landing-link">Entrar</Link>
-            <Link to="/cadastro" className="btn-primary landing-cta-small">Criar conta grátis</Link>
+            <Link to="/cadastro" className="btn-primary landing-cta-small">Criar conta</Link>
           </nav>
         </div>
       </header>
 
+      <div className="landing-container">
       <main>
         {/* Hero */}
         <section className="landing-hero">
@@ -189,6 +190,7 @@ export default function Landing() {
           <Link to="/cadastro">Criar conta</Link>
         </nav>
       </footer>
+      </div>
     </div>
   );
 }
