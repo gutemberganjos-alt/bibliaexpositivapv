@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /inicio
+Disallow: /biblia
+Disallow: /biblioteca
+Disallow: /assinatura
+Disallow: /perfil
+Disallow: /estudos
+Disallow: /exegese
+Disallow: /interpretacao
+Disallow: /minha-conta
+
+Sitemap: https://bibliaexpositiva.com.br/sitemap.xml

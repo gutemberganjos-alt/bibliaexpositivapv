@@ -1,0 +1,140 @@
+import { useState } from 'react';
+import { LogOut, User, Mail, Shield, CreditCard, ChevronRight, GraduationCap, Settings, XCircle, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
+import { useSubscription } from '../contexts/SubscriptionContext';
+import { openBillingPortal, cancelSubscription } from '../lib/subscription';
+
+const TIER_LABEL: Record<string, string> = {
+  free: 'Sem assinatura ativa',
+  premium: 'Plano Individual',
+  church: 'Plano Igreja',
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  active: 'Ativa',
+  trialing: 'Em teste',
+  past_due: 'Pagamento pendente',
+  canceled: 'Cancelada',
+  incomplete: 'Incompleta',
+};
+
+export default function Account() {
+  const { user, signOut } = useAuth();
+  const { subscription, active, refresh } = useSubscription();
+  const { showToast } = useToast();
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState<'portal' | 'cancel' | null>(null);
+
+  const userName = user?.user_metadata?.full_name || 'Irmão(ã) em Cristo';
+  const userEmail = user?.email || 'usuario@email.com';
+
+  async function handlePortal() {
+    setBusy('portal');
+    try {
+      await openBillingPortal();
+    } catch (e) {
+      showToast((e as Error).message || 'Não foi possível abrir o portal.', 'error');
+      setBusy(null);
+    }
+  }
+
+  async function handleCancel() {
+    if (!confirm('Deseja mesmo cancelar sua assinatura? Se estiver dentro de 7 dias do primeiro pagamento, o reembolso é automático.')) return;
+    setBusy('cancel');
+    try {
+      const r = await cancelSubscription();
+      showToast(r.message, r.refunded ? 'success' : 'info');
+      await refresh();
+    } catch (e) {
+      showToast((e as Error).message || 'Não foi possível cancelar.', 'error');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="p-4 max-w-2xl mx-auto w-full pb-24">
+      <header className="mb-6 pt-4 pb-2" style={{ background: 'radial-gradient(ellipse 70% 50% at 50% 0%, rgba(201,168,76,0.07), transparent 70%)' }}>
+        <h1 className="font-['Manrope'] text-2xl text-[var(--cor-dourado)] tracking-wide">Minha Conta</h1>
+      </header>
+
+      <div className="card p-6 mb-6">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-16 h-16 rounded-full bg-[var(--cor-dourado-bg)] flex items-center justify-center border border-[var(--cor-borda)]">
+            <User size={32} className="text-[var(--cor-dourado)]" />
+          </div>
+          <div className="overflow-hidden">
+            <h2 className="text-lg text-[var(--cor-dourado-claro)] truncate">{userName}</h2>
+            <p className="text-sm text-[var(--cor-texto-dim)] flex items-center gap-1 mt-1">
+              <Shield size={14} /> {active ? 'Acesso liberado' : 'Acesso por assinatura'}
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-3 bg-[var(--cor-fundo-input)] rounded-md border border-[var(--cor-borda)] overflow-hidden">
+            <Mail size={18} className="text-[var(--cor-texto-dim)] shrink-0" />
+            <span className="text-[var(--cor-texto-medio)] text-sm truncate">{userEmail}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Assinatura */}
+      <div className="card p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-[var(--cor-dourado-claro)] flex items-center gap-2"><CreditCard size={18} /> Assinatura</h3>
+          {subscription && (
+            <span className={`text-xs px-2 py-1 rounded-full border ${active ? 'text-[var(--cor-dourado)] border-[var(--cor-dourado)]/40' : 'text-[var(--cor-texto-dim)] border-[var(--cor-borda)]'}`}>
+              {STATUS_LABEL[subscription.status] ?? subscription.status}
+            </span>
+          )}
+        </div>
+
+        <p className="text-sm text-[var(--cor-texto-medio)]">
+          {TIER_LABEL[subscription?.tier ?? 'free']}
+          {subscription?.current_period_end && active && (
+            <> · {subscription.cancel_at_period_end ? 'acesso até' : 'renova em'} {new Date(subscription.current_period_end).toLocaleDateString('pt-BR')}</>
+          )}
+        </p>
+
+        {active ? (
+          <div className="flex flex-col sm:flex-row gap-3 mt-5">
+            <button onClick={handlePortal} disabled={busy !== null} className="btn-secondary flex-1 flex items-center justify-center gap-2 disabled:opacity-60">
+              {busy === 'portal' ? <Loader2 size={16} className="animate-spin" /> : <Settings size={16} />} Gerenciar / atualizar cartão
+            </button>
+            {!subscription?.cancel_at_period_end && (
+              <button onClick={handleCancel} disabled={busy !== null} className="btn-destructive flex-1 flex items-center justify-center gap-2 disabled:opacity-60">
+                {busy === 'cancel' ? <Loader2 size={16} className="animate-spin" /> : <XCircle size={16} />} Cancelar
+              </button>
+            )}
+          </div>
+        ) : (
+          <button onClick={() => navigate('/assinatura')} className="btn-primary w-full mt-5">Ver planos</button>
+        )}
+      </div>
+
+      <div className="space-y-3 mb-8">
+        <button
+          onClick={() => navigate('/perfil')}
+          className="w-full card p-4 flex items-center justify-between hover:border-[var(--cor-dourado)] group transition-all"
+        >
+          <div className="flex items-center gap-3">
+            <GraduationCap size={20} className="text-[var(--cor-dourado-dim)] group-hover:text-[var(--cor-dourado)] transition-colors" />
+            <span className="text-[var(--cor-pergaminho)]">Perfil de Estudo</span>
+          </div>
+          <ChevronRight size={18} className="text-[var(--cor-dourado-dim)]" />
+        </button>
+      </div>
+
+      <button
+        onClick={signOut}
+        className="btn-destructive w-full flex items-center justify-center gap-2"
+      >
+        <LogOut size={18} />
+        Sair da conta
+      </button>
+    </div>
+  );
+}
