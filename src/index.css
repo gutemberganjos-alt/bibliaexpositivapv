@@ -250,34 +250,34 @@
   line-height: 1.4;
 }
 .selo-escritura {
-  color: #E8C97A;
-  background: rgba(201, 168, 76, 0.14);
-  border-color: rgba(201, 168, 76, 0.45);
+  color: #7A5E12;
+  background: rgba(201, 168, 76, 0.2);
+  border-color: rgba(160, 130, 40, 0.6);
 }
 .selo-consenso {
-  color: #7FCf9f;
-  background: rgba(42, 122, 74, 0.18);
-  border-color: rgba(42, 122, 74, 0.5);
+  color: #1E6B40;
+  background: rgba(42, 122, 74, 0.16);
+  border-color: rgba(42, 122, 74, 0.55);
 }
 .selo-aceita {
-  color: #8Fc7d8;
-  background: rgba(58, 110, 130, 0.18);
-  border-color: rgba(58, 110, 130, 0.5);
+  color: #285E70;
+  background: rgba(58, 110, 130, 0.16);
+  border-color: rgba(58, 110, 130, 0.55);
 }
 .selo-debatida {
-  color: #E0B45C;
-  background: rgba(122, 106, 16, 0.2);
-  border-color: rgba(122, 106, 16, 0.55);
+  color: #6B5A0E;
+  background: rgba(122, 106, 16, 0.16);
+  border-color: rgba(122, 106, 16, 0.6);
 }
 .selo-hipotese {
-  color: #D89A9A;
-  background: rgba(122, 31, 31, 0.18);
+  color: #8C2B2B;
+  background: rgba(122, 31, 31, 0.14);
   border-color: rgba(122, 31, 31, 0.5);
 }
 .selo-tradicao {
-  color: #C6B4D8;
-  background: rgba(90, 70, 120, 0.2);
-  border-color: rgba(90, 70, 120, 0.5);
+  color: #55447A;
+  background: rgba(90, 70, 120, 0.16);
+  border-color: rgba(90, 70, 120, 0.55);
 }
 
 /* ============================================================
