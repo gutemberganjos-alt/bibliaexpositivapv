@@ -22,10 +22,14 @@ const TRANSIENTES = [429, 500, 502, 503, 504];
 const ENFORCE_SUBSCRIPTION = (Deno.env.get('ENFORCE_SUBSCRIPTION') ?? 'true') !== 'false';
 
 /**
- * Verifica no servidor se o usuário do JWT tem assinatura ativa.
- * Retorna { ok } — quando ENFORCE_SUBSCRIPTION está desligado, sempre libera.
+ * Verifica no servidor se o usuário do JWT tem assinatura ativa E consome 1 unidade
+ * de franquia mensal — tudo em uma chamada atômica no banco (RPC consume_quota),
+ * para que pedidos simultâneos não furem o limite. Chamado ANTES do Gemini, de
+ * propósito: nunca chamamos a IA além do que o plano permite.
+ * Limites (definidos na função consume_quota do banco): premium=30/mês, church=150/mês.
+ * Quando ENFORCE_SUBSCRIPTION está desligado, sempre libera (dev/testes).
  */
-async function verificarAssinatura(req: Request): Promise<{ ok: boolean; status?: number; error?: string }> {
+async function verificarAssinaturaEQuota(req: Request): Promise<{ ok: boolean; status?: number; error?: string }> {
   if (!ENFORCE_SUBSCRIPTION) return { ok: true };
   try {
     const url = Deno.env.get('SUPABASE_URL');
@@ -43,16 +47,25 @@ async function verificarAssinatura(req: Request): Promise<{ ok: boolean; status?
     const uid = user?.id;
     if (!uid) return { ok: false, status: 401, error: 'Sessão inválida.' };
 
-    // 2) RPC has_active_subscription(uid) com service_role (considera plano de igreja).
-    const r = await fetch(`${url}/rest/v1/rpc/has_active_subscription`, {
+    // 2) RPC consume_quota(uid): checa assinatura ativa + consome franquia, atômico.
+    const r = await fetch(`${url}/rest/v1/rpc/consume_quota`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', apikey: serviceKey, authorization: `Bearer ${serviceKey}` },
-      body: JSON.stringify({ p_user_id: uid }),
+      body: JSON.stringify({ p_user_id: uid, p_tokens: 0 }),
     });
     if (!r.ok) return { ok: false, status: 403, error: 'Não foi possível validar a assinatura.' };
-    const ativo = await r.json();
-    if (ativo === true) return { ok: true };
-    return { ok: false, status: 402, error: 'Assinatura ativa necessária para gerar estudos.' };
+    const rows = await r.json();
+    const row = Array.isArray(rows) ? rows[0] : rows;
+
+    if (!row?.active) return { ok: false, status: 402, error: 'Assinatura ativa necessária para gerar estudos.' };
+    if (!row?.allowed) {
+      return {
+        ok: false,
+        status: 429,
+        error: `Limite mensal do seu plano atingido (${row.used}/${row.limit_val} gerações). A franquia renova no início do próximo mês.`,
+      };
+    }
+    return { ok: true };
   } catch (_e) {
     return { ok: false, status: 403, error: 'Falha ao validar a assinatura.' };
   }
@@ -74,8 +87,10 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'Referência muito longa.' }, 400);
     }
 
-    // Bloqueio de acesso: exige assinatura ativa (quando ENFORCE_SUBSCRIPTION=true).
-    const assinatura = await verificarAssinatura(req);
+    // Bloqueio de acesso + franquia: exige assinatura ativa e consome 1 geração do
+    // limite mensal do plano (quando ENFORCE_SUBSCRIPTION=true). Feito ANTES de
+    // chamar o Gemini — nunca gastamos IA além do que o plano paga.
+    const assinatura = await verificarAssinaturaEQuota(req);
     if (!assinatura.ok) return json({ error: assinatura.error }, assinatura.status ?? 402);
 
     const apiKey = await obterChaveGemini();

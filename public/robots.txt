@@ -10,4 +10,4 @@ Disallow: /exegese
 Disallow: /interpretacao
 Disallow: /minha-conta
 
-Sitemap: https://bibliaexpositiva.com.br/sitemap.xml
+Sitemap: https://bibliaexpositivapv.com.br/sitemap.xml

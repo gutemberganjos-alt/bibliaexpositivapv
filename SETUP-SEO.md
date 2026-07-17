@@ -14,14 +14,14 @@ Hero, "como funciona" (3 passos), formatos de estudo, públicos, selos de confia
 **3. SEO técnico (`index.html`, `public/robots.txt`, `public/sitemap.xml`).**
 - `<title>` e `<meta description>` reais (antes: só "Bíblia Expositiva PV", sem descrição).
 - Open Graph e Twitter Card (como o link aparece quando compartilhado no WhatsApp/redes).
-- `canonical` apontando para `https://bibliaexpositiva.com.br/`.
+- `canonical` apontando para `https://bibliaexpositivapv.com.br/`.
 - Dados estruturados (JSON-LD `SoftwareApplication`) com os planos e preços — ajuda o Google a entender o que é o produto.
 - `robots.txt` liberando `/` e bloqueando as rotas autenticadas (que não têm conteúdo pra indexar mesmo, pois exigem login).
 - `sitemap.xml` com a página pública.
 
 ## O que falta você fazer (fora do meu alcance)
 
-1. **Registrar e apontar o domínio `bibliaexpositiva.com.br`.** Todo o SEO técnico (canonical, OG, sitemap) já está escrito assumindo esse domínio. Se registrar outro, me avise para eu trocar.
+1. **Registrar e apontar o domínio `bibliaexpositivapv.com.br`.** Todo o SEO técnico (canonical, OG, sitemap) já está escrito assumindo esse domínio. Se registrar outro, me avise para eu trocar.
 2. **Gerar os ícones reais do app.** O `manifest.json` e a tag OG referenciam `/icons/icon-192.png` e `/icons/icon-512.png`, mas esses arquivos **não existem** na pasta `public/icons` (isso já era assim antes, eu só percebi agora ao mexer no OG). Sem eles: ícone de instalação do PWA quebrado e preview de link nas redes sem imagem. Preciso de uma logo/ícone quadrado (ideal 512×512px) para gerar os dois tamanhos.
 3. **Google Search Console.** Depois do domínio no ar: cadastrar a propriedade, enviar o `sitemap.xml`, pedir indexação da home.
 4. **Testar o preview de compartilhamento** (Facebook Sharing Debugger / cartão do Twitter) depois do domínio publicado, pra conferir se o OG está puxando certo.
