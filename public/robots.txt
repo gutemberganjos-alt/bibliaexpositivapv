@@ -10,4 +10,7 @@ Disallow: /exegese
 Disallow: /interpretacao
 Disallow: /minha-conta
 
+Allow: /termos
+Allow: /privacidade
+
 Sitemap: https://bibliaexpositivapv.com.br/sitemap.xml

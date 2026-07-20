@@ -528,3 +528,44 @@
   outline: none;
   box-shadow: 0 0 0 3px rgba(169,124,30,0.15);
 }
+
+/* ---- Páginas legais (Termos, Privacidade) ---- */
+.documento-legal h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.9rem;
+  color: var(--cor-dourado);
+  margin-bottom: .3rem;
+}
+.documento-legal .doc-data { font-size: .8rem; color: var(--cor-texto-dim); margin-bottom: 2rem; }
+.documento-legal h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.15rem;
+  color: var(--cor-dourado);
+  margin: 2rem 0 .6rem;
+}
+.documento-legal p { color: var(--cor-texto-medio); line-height: 1.75; margin-bottom: .9rem; }
+.documento-legal strong { color: var(--cor-pergaminho); }
+.documento-legal ul { list-style: disc; padding-left: 1.4rem; margin-bottom: 1rem; }
+.documento-legal li { color: var(--cor-texto-medio); line-height: 1.7; margin-bottom: .4rem; }
+.documento-legal a { color: var(--cor-ouro); text-decoration: underline; }
+.documento-legal .doc-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0 1.4rem;
+  font-size: .875rem;
+}
+.documento-legal .doc-tabela th,
+.documento-legal .doc-tabela td {
+  border: 1px solid var(--cor-borda);
+  padding: .55rem .7rem;
+  text-align: left;
+  vertical-align: top;
+  color: var(--cor-texto-medio);
+}
+.documento-legal .doc-tabela th { color: var(--cor-pergaminho); background: rgba(14,32,56,.04); }
+.documento-legal .doc-rodape {
+  margin-top: 2.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--cor-borda);
+  font-size: .85rem;
+}

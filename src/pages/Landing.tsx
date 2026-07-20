@@ -219,9 +219,12 @@ export default function Landing() {
 
       <footer className="landing-footer">
         <p>© {new Date().getFullYear()} Bíblia Expositiva. Todos os direitos reservados.</p>
-        <nav className="flex gap-4">
+        <nav className="flex gap-4 flex-wrap justify-center">
           <Link to="/login">Entrar</Link>
           <Link to="/cadastro">Criar conta</Link>
+          <Link to="/termos">Termos de Uso</Link>
+          <Link to="/privacidade">Privacidade</Link>
+          <a href="mailto:suporte@grupo-soares.com">Suporte</a>
         </nav>
       </footer>
       </div>

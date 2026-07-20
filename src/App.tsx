@@ -16,6 +16,8 @@ import Interpretacao from './pages/Interpretacao';
 import Library from './pages/Library';
 import Membership from './pages/Membership';
 import StudyProfile from './pages/StudyProfile';
+import Termos from './pages/Termos';
+import Privacidade from './pages/Privacidade';
 
 // Auth Pages
 import Login from './pages/auth/Login';
@@ -55,6 +57,11 @@ function App() {
           <Routes>
             {/* Página pública (Landing), indexável — visitante não logado vê o site institucional. */}
             <Route path="/" element={<HomeRoute />} />
+
+            {/* Documentos legais: públicos e SEM exigir login — o cliente precisa
+                poder ler antes de assinar, e o processador de pagamentos exige. */}
+            <Route path="/termos" element={<Termos />} />
+            <Route path="/privacidade" element={<Privacidade />} />
 
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
             <Route path="/cadastro" element={<PublicRoute><Register /></PublicRoute>} />
