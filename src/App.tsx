@@ -67,6 +67,9 @@ function App() {
                 <Route path="/biblia" element={<Bible />} />
                 <Route path="/biblioteca" element={<Library />} />
                 <Route path="/assinatura" element={<Membership />} />
+                {/* Retorno do checkout do Asaas: ele recusa URLs com "?", entao
+                    o status vem no caminho (/assinatura/sucesso, /cancelado, /expirado). */}
+                <Route path="/assinatura/:retorno" element={<Membership />} />
                 <Route path="/perfil" element={<StudyProfile />} />
                 {/* Rotas de geração exigem assinatura ativa (VITE_ENFORCE_SUBSCRIPTION) */}
                 <Route element={<RequireSubscription />}>

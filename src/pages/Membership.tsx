@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Building2, Check, Crown, ShieldCheck, Loader2 } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
@@ -22,10 +22,12 @@ export default function Membership() {
   const navigate = useNavigate();
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
 
-  // Retorno do Checkout da Stripe (?status=sucesso|cancelado).
+  // Retorno do pagamento. O Asaas recusa URLs de callback com "?", então o status
+  // chega no caminho (/assinatura/sucesso). Aceitamos as duas formas por segurança.
   // O estado é DERIVADO da URL — nada de setState em efeito, e a limpeza da URL
   // não cancela a confirmação (foi esse o bug: os timers morriam na hora).
-  const statusRetorno = new URLSearchParams(location.search).get('status');
+  const { retorno } = useParams<{ retorno?: string }>();
+  const statusRetorno = retorno ?? new URLSearchParams(location.search).get('status');
   const [desistiu, setDesistiu] = useState(false);
   const confirmando = statusRetorno === 'sucesso' && !active && !desistiu;
   const avisou = useRef(false);
@@ -228,7 +230,7 @@ export default function Membership() {
         </article>
       </section>
 
-      <p className="membership-trust"><ShieldCheck size={15} /> Cobrança segura via Stripe (cartão e PIX). Reembolso integral em até 7 dias. Acesso liberado após a confirmação do pagamento.</p>
+      <p className="membership-trust"><ShieldCheck size={15} /> Cobrança segura via Asaas (PIX e cartão de crédito). Reembolso integral em até 7 dias. Acesso liberado após a confirmação do pagamento.</p>
     </div>
   );
 }
