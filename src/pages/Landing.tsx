@@ -171,6 +171,7 @@ export default function Landing() {
               <p className="text-2xl font-['Playfair_Display'] landing-preco">
                 {PLANOS.individual.precoLabel}
                 <span className="text-sm font-sans landing-muted"> {PLANOS.individual.ciclo}</span>
+                <span className="block text-xs font-sans landing-muted mt-1">ou {PLANOS.individual.precos.ANUAL.precoLabel} por ano</span>
               </p>
               <Link to="/cadastro" className="btn-primary w-full mt-5 flex items-center justify-center gap-2">
                 Assinar plano individual
@@ -183,6 +184,7 @@ export default function Landing() {
               <p className="text-2xl font-['Playfair_Display'] landing-preco">
                 {PLANOS.igreja.precoLabel}
                 <span className="text-sm font-sans landing-muted"> {PLANOS.igreja.ciclo}</span>
+                <span className="block text-xs font-sans landing-muted mt-1">ou {PLANOS.igreja.precos.ANUAL.precoLabel} por ano</span>
               </p>
               <Link to="/cadastro" className="btn-primary w-full mt-5 flex items-center justify-center gap-2">
                 Assinar plano igreja

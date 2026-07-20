@@ -28,10 +28,20 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...CORS, 'content-type': 'application/json' } });
 }
 
-// nome <= 30 caracteres (limite do Asaas)
-function planoConfig(plan: string): { valor: number; tier: 'premium' | 'church'; nome: string } | null {
-  if (plan === 'individual') return { valor: 29.90, tier: 'premium', nome: 'Biblia Expositiva Individual' };
-  if (plan === 'igreja') return { valor: 99.90, tier: 'church', nome: 'Biblia Expositiva Igreja' };
+// Precos definidos AQUI (nunca vindos do navegador, que o cliente pode adulterar).
+// nome <= 30 caracteres (limite do Asaas).
+type Cfg = { valor: number; tier: 'premium' | 'church'; nome: string; cycle: 'MONTHLY' | 'YEARLY'; meses: number };
+
+function planoConfig(plan: string, ciclo: string): Cfg | null {
+  const anual = ciclo === 'ANUAL';
+  const cycle = anual ? 'YEARLY' : 'MONTHLY';
+  const meses = anual ? 12 : 1;
+  if (plan === 'individual') {
+    return { valor: anual ? 295.90 : 29.90, tier: 'premium', nome: 'Biblia Expositiva Individual', cycle, meses };
+  }
+  if (plan === 'igreja') {
+    return { valor: anual ? 1019.90 : 99.90, tier: 'church', nome: 'Biblia Expositiva Igreja', cycle, meses };
+  }
   return null;
 }
 
@@ -100,14 +110,20 @@ Deno.serve(async (req: Request) => {
   if (!Deno.env.get('ASAAS_API_KEY')) return json({ error: 'ASAAS_API_KEY nao configurada.' }, 500);
 
   try {
-    const { plan, cpfCnpj, billingType } = (await req.json().catch(() => ({}))) ?? {};
+    const { plan, cpfCnpj, billingType, telefone, ciclo } = (await req.json().catch(() => ({}))) ?? {};
     const forma: 'PIX' | 'CREDIT_CARD' = billingType === 'CREDIT_CARD' ? 'CREDIT_CARD' : 'PIX';
 
-    const cfg = planoConfig(String(plan));
+    const cfg = planoConfig(String(plan), String(ciclo ?? 'MENSAL'));
     if (!cfg) return json({ error: 'Plano invalido.' }, 400);
 
     const doc = String(cpfCnpj ?? '').replace(/\D/g, '');
     if (!documentoValido(doc)) return json({ error: 'CPF ou CNPJ invalido. Confira os numeros.' }, 400);
+
+    // O Asaas exige telefone no cliente para liberar o checkout de cartao.
+    const fone = String(telefone ?? '').replace(/\D/g, '');
+    if (fone.length !== 10 && fone.length !== 11) {
+      return json({ error: 'Informe um telefone com DDD.' }, 400);
+    }
 
     const jwt = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
     if (!jwt) return json({ error: 'Nao autenticado.' }, 401);
@@ -130,22 +146,36 @@ Deno.serve(async (req: Request) => {
       .from('subscriptions').select('id, asaas_customer_id').eq('user_id', user.id)
       .not('asaas_customer_id', 'is', null).limit(1).maybeSingle();
 
+    const nome = (user.user_metadata?.full_name as string) || user.email || 'Assinante';
+    const dadosCliente = {
+      name: nome,
+      cpfCnpj: doc,
+      email: user.email,
+      // O Asaas recusa o checkout se o cliente nao tiver telefone. Mandamos nos
+      // dois campos: celular (11 digitos) tambem serve como fixo.
+      phone: fone,
+      mobilePhone: fone.length === 11 ? fone : undefined,
+      externalReference: user.id,
+      notificationDisabled: false,
+    };
+
     let customerId = existente?.asaas_customer_id as string | undefined;
     if (!customerId) {
-      const nome = (user.user_metadata?.full_name as string) || user.email || 'Assinante';
-      const rc = await asaas('/customers', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: nome, cpfCnpj: doc, email: user.email,
-          externalReference: user.id, notificationDisabled: false,
-        }),
-      });
+      const rc = await asaas('/customers', { method: 'POST', body: JSON.stringify(dadosCliente) });
       const cJson = await rc.json();
       if (!rc.ok) {
         console.error('[asaas-checkout] erro ao criar cliente', JSON.stringify(cJson));
         return json({ error: cJson?.errors?.[0]?.description ?? 'Nao foi possivel criar seu cadastro de cobranca.' }, 400);
       }
       customerId = cJson.id;
+    } else {
+      // Cliente antigo pode ter sido criado sem telefone (versoes anteriores):
+      // atualiza antes de seguir, senao o checkout de cartao falha.
+      const ru = await asaas(`/customers/${customerId}`, { method: 'POST', body: JSON.stringify(dadosCliente) });
+      if (!ru.ok) {
+        const uJson = await ru.json().catch(() => null);
+        console.error('[asaas-checkout] erro ao atualizar cliente', JSON.stringify(uJson));
+      }
     }
 
     const appUrl = baseDoApp(Deno.env.get('APP_URL') || req.headers.get('origin') || '');
@@ -166,8 +196,13 @@ Deno.serve(async (req: Request) => {
           cancelUrl: `${appUrl}/assinatura/cancelado`,
           expiredUrl: `${appUrl}/assinatura/expirado`,
         },
-        items: [{ name: cfg.nome, description: 'Assinatura mensal', quantity: 1, value: cfg.valor }],
-        subscription: { cycle: 'MONTHLY', nextDueDate: hoje },
+        items: [{
+          name: cfg.nome,
+          description: cfg.cycle === 'YEARLY' ? 'Assinatura anual' : 'Assinatura mensal',
+          quantity: 1,
+          value: cfg.valor,
+        }],
+        subscription: { cycle: cfg.cycle, nextDueDate: hoje },
       };
       const rk = await asaas('/checkouts', { method: 'POST', body: JSON.stringify(corpo) });
       const kJson = await rk.json();
@@ -184,7 +219,7 @@ Deno.serve(async (req: Request) => {
           billingType: 'PIX',
           value: cfg.valor,
           nextDueDate: hoje,
-          cycle: 'MONTHLY',
+          cycle: cfg.cycle,
           description: cfg.nome,
           externalReference: user.id,
         }),
@@ -207,7 +242,7 @@ Deno.serve(async (req: Request) => {
       tier: cfg.tier,
       status: 'incomplete',
       value: cfg.valor,
-      cycle: 'MONTHLY',
+      cycle: cfg.cycle,
       billing_type: forma,
       asaas_customer_id: customerId,
       ...(asaasSubId ? { asaas_subscription_id: asaasSubId } : {}),

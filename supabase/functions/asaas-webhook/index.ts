@@ -51,18 +51,18 @@ function mapBilling(b?: string): 'PIX' | 'CREDIT_CARD' | 'BOLETO' {
 async function acharAssinatura(p: Pagamento) {
   if (p.subscription) {
     const { data } = await admin.from('subscriptions')
-      .select('id, user_id, tier').eq('asaas_subscription_id', p.subscription).maybeSingle();
+      .select('id, user_id, tier, cycle').eq('asaas_subscription_id', p.subscription).maybeSingle();
     if (data) return data;
   }
   if (p.externalReference) {
     const { data } = await admin.from('subscriptions')
-      .select('id, user_id, tier').eq('user_id', p.externalReference)
+      .select('id, user_id, tier, cycle').eq('user_id', p.externalReference)
       .order('created_at', { ascending: false }).limit(1).maybeSingle();
     if (data) return data;
   }
   if (p.customer) {
     const { data } = await admin.from('subscriptions')
-      .select('id, user_id, tier').eq('asaas_customer_id', p.customer)
+      .select('id, user_id, tier, cycle').eq('asaas_customer_id', p.customer)
       .order('created_at', { ascending: false }).limit(1).maybeSingle();
     if (data) return data;
   }
@@ -73,9 +73,11 @@ async function acharAssinatura(p: Pagamento) {
 async function aoReceber(p: Pagamento) {
   const sub = await acharAssinatura(p);
 
-  // Próximo vencimento = +1 mês a partir de hoje (ciclo mensal).
+  // Fim do acesso = +1 mês (mensal) ou +12 meses (anual). Sem isso, quem paga o
+  // ano inteiro perderia o acesso depois de 30 dias.
+  const meses = (sub as { cycle?: string } | null)?.cycle === 'YEARLY' ? 12 : 1;
   const fim = new Date();
-  fim.setMonth(fim.getMonth() + 1);
+  fim.setMonth(fim.getMonth() + meses);
 
   if (sub) {
     const { error } = await admin.from('subscriptions').update({

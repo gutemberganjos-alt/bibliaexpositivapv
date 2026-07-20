@@ -5,7 +5,8 @@ import { useToast } from '../contexts/ToastContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
 import {
   PLANOS, startCheckout, documentoValido, formatarDocumento,
-  type PlanId, type FormaPagamento,
+  telefoneValido, formatarTelefone,
+  type PlanId, type FormaPagamento, type Ciclo,
 } from '../lib/subscription';
 
 const BENEFITS = [
@@ -72,24 +73,34 @@ export default function Membership() {
   // O Asaas exige CPF/CNPJ e a forma de pagamento na criação da assinatura.
   const [planoEscolhido, setPlanoEscolhido] = useState<PlanId | null>(null);
   const [documento, setDocumento] = useState('');
+  const [telefone, setTelefone] = useState('');
   const [forma, setForma] = useState<FormaPagamento>('PIX');
+  const [ciclo, setCiclo] = useState<Ciclo>('MENSAL');
   const [erroDoc, setErroDoc] = useState('');
+  const [erroTel, setErroTel] = useState('');
 
   function escolherPlano(plan: PlanId) {
     setPlanoEscolhido(plan);
     setErroDoc('');
+    setErroTel('');
   }
 
   async function confirmarAssinatura() {
     if (!planoEscolhido) return;
+    let invalido = false;
     if (!documentoValido(documento)) {
       setErroDoc('Informe um CPF ou CNPJ válido.');
-      return;
-    }
-    setErroDoc('');
+      invalido = true;
+    } else setErroDoc('');
+    if (!telefoneValido(telefone)) {
+      setErroTel('Informe um telefone com DDD.');
+      invalido = true;
+    } else setErroTel('');
+    if (invalido) return;
+
     setLoadingPlan(planoEscolhido);
     try {
-      await startCheckout(planoEscolhido, documento, forma);
+      await startCheckout(planoEscolhido, documento, forma, telefone, ciclo);
     } catch (e) {
       showToast((e as Error).message || 'Não foi possível iniciar a assinatura.', 'error');
       setLoadingPlan(null);
@@ -139,11 +150,32 @@ export default function Membership() {
         <section className="card p-5 mb-5">
           <p className="eyebrow mb-1">FINALIZAR ASSINATURA</p>
           <h2 className="text-lg text-[var(--cor-dourado-claro)] mb-1">
-            Plano {PLANOS[planoEscolhido].nome} — {PLANOS[planoEscolhido].precoLabel} {PLANOS[planoEscolhido].ciclo}
+            Plano {PLANOS[planoEscolhido].nome} — {PLANOS[planoEscolhido].precos[ciclo].precoLabel} {PLANOS[planoEscolhido].precos[ciclo].ciclo}
           </h2>
           <p className="text-xs text-[var(--cor-texto-dim)] mb-4">
-            Precisamos do seu CPF ou CNPJ para emitir a cobrança.
+            Precisamos do seu CPF ou CNPJ e telefone para emitir a cobrança.
           </p>
+
+          <p className="text-sm text-[var(--cor-texto-medio)] mb-2">Como prefere cobrar?</p>
+          <div className="grid grid-cols-2 gap-3 mb-5">
+            {(['MENSAL', 'ANUAL'] as Ciclo[]).map((c) => {
+              const preco = PLANOS[planoEscolhido].precos[c];
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCiclo(c)}
+                  className={`card p-3 text-sm text-left ${ciclo === c ? 'border-[var(--cor-dourado)]' : ''}`}
+                >
+                  {c === 'MENSAL' ? 'Mensal' : 'Anual'}
+                  <span className="block text-[var(--cor-dourado-claro)]">{preco.precoLabel}</span>
+                  {preco.economiaLabel && (
+                    <span className="block text-xs text-[var(--cor-texto-dim)]">{preco.economiaLabel}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
 
           <label className="block text-sm text-[var(--cor-texto-medio)] mb-1" htmlFor="doc">CPF ou CNPJ</label>
           <input
@@ -156,6 +188,18 @@ export default function Membership() {
             className="w-full mb-1"
           />
           {erroDoc && <p className="text-xs text-[var(--cor-erro)] mb-2">{erroDoc}</p>}
+
+          <label className="block text-sm text-[var(--cor-texto-medio)] mt-4 mb-1" htmlFor="tel">Telefone com DDD</label>
+          <input
+            id="tel"
+            inputMode="numeric"
+            autoComplete="tel"
+            placeholder="(11) 91234-5678"
+            value={telefone}
+            onChange={(e) => { setTelefone(formatarTelefone(e.target.value)); setErroTel(''); }}
+            className="w-full mb-1"
+          />
+          {erroTel && <p className="text-xs text-[var(--cor-erro)] mb-2">{erroTel}</p>}
 
           <p className="text-sm text-[var(--cor-texto-medio)] mt-4 mb-2">Como prefere pagar?</p>
           <div className="grid grid-cols-2 gap-3 mb-4">
@@ -204,6 +248,7 @@ export default function Membership() {
           <h2>Para quem estuda, ensina e ministra.</h2>
           <p>Seu acervo, seus estudos e seus kits em uma experiência única.</p>
           <p className="text-2xl text-[var(--cor-dourado)] font-['Playfair_Display'] mt-4">{PLANOS.individual.precoLabel}<span className="text-sm text-[var(--cor-texto-dim)] font-sans"> {PLANOS.individual.ciclo}</span></p>
+          <p className="text-xs text-[var(--cor-texto-dim)] mt-1">ou {PLANOS.individual.precos.ANUAL.precoLabel} por ano — {PLANOS.individual.precos.ANUAL.economiaLabel?.toLowerCase()}</p>
           <button
             onClick={() => escolherPlano('individual')}
             disabled={loadingPlan !== null || active}
@@ -219,6 +264,7 @@ export default function Membership() {
           <h2>Para equipes que servem e formam pessoas.</h2>
           <p>Uma base para professores, líderes e ministérios estudarem com unidade.</p>
           <p className="text-2xl text-[var(--cor-dourado)] font-['Playfair_Display'] mt-4">{PLANOS.igreja.precoLabel}<span className="text-sm text-[var(--cor-texto-dim)] font-sans"> {PLANOS.igreja.ciclo}</span></p>
+          <p className="text-xs text-[var(--cor-texto-dim)] mt-1">ou {PLANOS.igreja.precos.ANUAL.precoLabel} por ano — {PLANOS.igreja.precos.ANUAL.economiaLabel?.toLowerCase()}</p>
           <button
             onClick={() => escolherPlano('igreja')}
             disabled={loadingPlan !== null || active}

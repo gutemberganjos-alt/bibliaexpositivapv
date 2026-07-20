@@ -5,18 +5,49 @@ export type SubscriptionTier = 'free' | 'premium' | 'church';
 export type SubscriptionStatus =
   | 'active' | 'past_due' | 'canceled' | 'trialing' | 'incomplete';
 
+export type Ciclo = 'MENSAL' | 'ANUAL';
+
+export interface PrecoInfo {
+  /** Valor cobrado de uma vez, no ciclo. */
+  valor: number;
+  precoLabel: string;
+  ciclo: string;
+  /** Só no anual: quanto se economiza em relação a 12 meses avulsos. */
+  economiaLabel?: string;
+}
+
 export interface PlanoInfo {
   id: PlanId;
   nome: string;
   tier: Exclude<SubscriptionTier, 'free'>;
+  precos: Record<Ciclo, PrecoInfo>;
+  /** Atalhos do preço mensal — usados na landing. */
   precoLabel: string;
   ciclo: string;
 }
 
-/** Catálogo exibido no frontend. Os preços reais vivem nos Prices da Stripe. */
+/**
+ * Catálogo exibido no frontend. Os valores reais são revalidados no servidor
+ * (edge function asaas-checkout) — aqui é só vitrine.
+ * Anual: 12 meses avulsos custariam R$ 358,80 (individual) e R$ 1.198,80 (igreja).
+ */
 export const PLANOS: Record<PlanId, PlanoInfo> = {
-  individual: { id: 'individual', nome: 'Individual', tier: 'premium', precoLabel: 'R$ 29,90', ciclo: 'por mês' },
-  igreja: { id: 'igreja', nome: 'Igreja', tier: 'church', precoLabel: 'R$ 99,90', ciclo: 'por mês' },
+  individual: {
+    id: 'individual', nome: 'Individual', tier: 'premium',
+    precoLabel: 'R$ 29,90', ciclo: 'por mês',
+    precos: {
+      MENSAL: { valor: 29.90, precoLabel: 'R$ 29,90', ciclo: 'por mês' },
+      ANUAL: { valor: 295.90, precoLabel: 'R$ 295,90', ciclo: 'por ano', economiaLabel: 'Economize R$ 62,90' },
+    },
+  },
+  igreja: {
+    id: 'igreja', nome: 'Igreja', tier: 'church',
+    precoLabel: 'R$ 99,90', ciclo: 'por mês',
+    precos: {
+      MENSAL: { valor: 99.90, precoLabel: 'R$ 99,90', ciclo: 'por mês' },
+      ANUAL: { valor: 1019.90, precoLabel: 'R$ 1.019,90', ciclo: 'por ano', economiaLabel: 'Economize R$ 178,90' },
+    },
+  },
 };
 
 export interface Subscription {
@@ -92,6 +123,25 @@ export function documentoValido(doc: string): boolean {
   return false;
 }
 
+/** Telefone brasileiro: 10 dígitos (fixo) ou 11 (celular), DDD válido. */
+export function telefoneValido(tel: string): boolean {
+  const d = (tel ?? '').replace(/\D/g, '');
+  if (d.length !== 10 && d.length !== 11) return false;
+  const ddd = Number(d.slice(0, 2));
+  if (ddd < 11 || ddd > 99) return false;
+  if (d.length === 11 && d[2] !== '9') return false; // celular começa com 9
+  return true;
+}
+
+/** Máscara visual de telefone: (11) 91234-5678 */
+export function formatarTelefone(valor: string): string {
+  const d = (valor ?? '').replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 2) return d.replace(/(\d{1,2})/, '($1');
+  if (d.length <= 6) return d.replace(/(\d{2})(\d{1,4})/, '($1) $2');
+  if (d.length <= 10) return d.replace(/(\d{2})(\d{4})(\d{1,4})/, '($1) $2-$3');
+  return d.replace(/(\d{2})(\d{5})(\d{1,4})/, '($1) $2-$3');
+}
+
 /** Máscara visual de CPF/CNPJ enquanto o usuário digita. */
 export function formatarDocumento(valor: string): string {
   const d = (valor ?? '').replace(/\D/g, '').slice(0, 14);
@@ -113,10 +163,12 @@ export async function startCheckout(
   plan: PlanId,
   cpfCnpj: string,
   billingType: FormaPagamento,
+  telefone: string,
+  ciclo: Ciclo,
 ): Promise<void> {
   const { data, error } = await supabase.functions.invoke<{ url?: string; error?: string }>(
     'asaas-checkout',
-    { body: { plan, cpfCnpj, billingType } },
+    { body: { plan, cpfCnpj, billingType, telefone, ciclo } },
   );
   if (error) {
     // A mensagem útil vem no corpo da resposta da função, não no erro genérico.
