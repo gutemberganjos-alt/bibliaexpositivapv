@@ -29,6 +29,7 @@ type Pagamento = {
   paymentDate?: string;
   invoiceUrl?: string;
   status?: string;
+  externalReference?: string;
 };
 
 const RECEBIDO = ['PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED'];
@@ -41,19 +42,36 @@ function mapBilling(b?: string): 'PIX' | 'CREDIT_CARD' | 'BOLETO' {
   return 'PIX';
 }
 
-async function acharAssinatura(asaasSubId: string | undefined) {
-  if (!asaasSubId) return null;
-  const { data } = await admin
-    .from('subscriptions')
-    .select('id, user_id, tier')
-    .eq('asaas_subscription_id', asaasSubId)
-    .maybeSingle();
-  return data ?? null;
+/**
+ * Acha a assinatura do nosso banco. Com o Asaas Checkout, a assinatura só nasce
+ * DEPOIS do pagamento — então nem sempre temos o asaas_subscription_id.
+ * Ordem de busca: 1) id da assinatura  2) externalReference (id do usuário)
+ * 3) id do cliente no Asaas.
+ */
+async function acharAssinatura(p: Pagamento) {
+  if (p.subscription) {
+    const { data } = await admin.from('subscriptions')
+      .select('id, user_id, tier').eq('asaas_subscription_id', p.subscription).maybeSingle();
+    if (data) return data;
+  }
+  if (p.externalReference) {
+    const { data } = await admin.from('subscriptions')
+      .select('id, user_id, tier').eq('user_id', p.externalReference)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    if (data) return data;
+  }
+  if (p.customer) {
+    const { data } = await admin.from('subscriptions')
+      .select('id, user_id, tier').eq('asaas_customer_id', p.customer)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    if (data) return data;
+  }
+  return null;
 }
 
 /** Pagamento confirmado: ativa a assinatura e registra o pagamento. */
 async function aoReceber(p: Pagamento) {
-  const sub = await acharAssinatura(p.subscription);
+  const sub = await acharAssinatura(p);
 
   // Próximo vencimento = +1 mês a partir de hoje (ciclo mensal).
   const fim = new Date();
@@ -65,6 +83,9 @@ async function aoReceber(p: Pagamento) {
       current_period_end: fim.toISOString(),
       billing_type: mapBilling(p.billingType),
       canceled_at: null,
+      // No Checkout a assinatura nasce depois do pagamento: guardamos o id agora.
+      ...(p.subscription ? { asaas_subscription_id: p.subscription } : {}),
+      ...(p.customer ? { asaas_customer_id: p.customer } : {}),
       updated_at: new Date().toISOString(),
     }).eq('id', sub.id);
     if (error) throw new Error(`subscriptions.activate: ${error.message}`);
@@ -92,7 +113,7 @@ async function aoReceber(p: Pagamento) {
 
 /** Pagamento vencido/recusado: marca inadimplência (o acesso cai). */
 async function aoFalhar(p: Pagamento) {
-  const sub = await acharAssinatura(p.subscription);
+  const sub = await acharAssinatura(p);
   if (sub) {
     const { error } = await admin.from('subscriptions')
       .update({ status: 'past_due', updated_at: new Date().toISOString() })
@@ -118,7 +139,7 @@ async function aoFalhar(p: Pagamento) {
 
 /** Estorno: encerra o acesso e marca o pagamento como reembolsado. */
 async function aoEstornar(p: Pagamento) {
-  const sub = await acharAssinatura(p.subscription);
+  const sub = await acharAssinatura(p);
   if (sub) {
     const { error } = await admin.from('subscriptions').update({
       status: 'canceled',

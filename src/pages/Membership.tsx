@@ -4,8 +4,7 @@ import { Building2, Check, Crown, ShieldCheck, Loader2 } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
 import {
-  PLANOS, startCheckout, documentoValido, formatarDocumento,
-  type PlanId, type FormaPagamento,
+  PLANOS, startCheckout, documentoValido, formatarDocumento, type PlanId,
 } from '../lib/subscription';
 
 const BENEFITS = [
@@ -70,7 +69,6 @@ export default function Membership() {
   // O Asaas exige CPF/CNPJ e a forma de pagamento na criação da assinatura.
   const [planoEscolhido, setPlanoEscolhido] = useState<PlanId | null>(null);
   const [documento, setDocumento] = useState('');
-  const [forma, setForma] = useState<FormaPagamento>('PIX');
   const [erroDoc, setErroDoc] = useState('');
 
   function escolherPlano(plan: PlanId) {
@@ -87,7 +85,7 @@ export default function Membership() {
     setErroDoc('');
     setLoadingPlan(planoEscolhido);
     try {
-      await startCheckout(planoEscolhido, documento, forma);
+      await startCheckout(planoEscolhido, documento);
     } catch (e) {
       showToast((e as Error).message || 'Não foi possível iniciar a assinatura.', 'error');
       setLoadingPlan(null);
@@ -140,7 +138,7 @@ export default function Membership() {
             Plano {PLANOS[planoEscolhido].nome} — {PLANOS[planoEscolhido].precoLabel} {PLANOS[planoEscolhido].ciclo}
           </h2>
           <p className="text-xs text-[var(--cor-texto-dim)] mb-4">
-            Precisamos do seu CPF ou CNPJ para emitir a cobrança. Ele é enviado direto ao Asaas, nosso processador de pagamentos.
+            Precisamos do seu CPF ou CNPJ para emitir a cobrança. Na próxima tela você escolhe entre PIX e cartão de crédito.
           </p>
 
           <label className="block text-sm text-[var(--cor-texto-medio)] mb-1" htmlFor="doc">CPF ou CNPJ</label>
@@ -154,26 +152,6 @@ export default function Membership() {
             className="w-full mb-1"
           />
           {erroDoc && <p className="text-xs text-[var(--cor-erro)] mb-2">{erroDoc}</p>}
-
-          <p className="text-sm text-[var(--cor-texto-medio)] mt-4 mb-2">Como prefere pagar?</p>
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <button
-              type="button"
-              onClick={() => setForma('PIX')}
-              className={`card p-3 text-sm ${forma === 'PIX' ? 'border-[var(--cor-dourado)]' : ''}`}
-            >
-              PIX
-              <span className="block text-xs text-[var(--cor-texto-dim)]">Liberação rápida</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setForma('CREDIT_CARD')}
-              className={`card p-3 text-sm ${forma === 'CREDIT_CARD' ? 'border-[var(--cor-dourado)]' : ''}`}
-            >
-              Cartão de crédito
-              <span className="block text-xs text-[var(--cor-texto-dim)]">Renova sozinho</span>
-            </button>
-          </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
             <button
