@@ -93,6 +93,18 @@ function documentoValido(doc: string): boolean {
   return false;
 }
 
+/**
+ * Junta TODAS as mensagens de erro do Asaas. Mostrar so a primeira fez o usuario
+ * descobrir um campo faltando por vez, em tentativas separadas.
+ */
+function mensagemErro(json: unknown, padrao: string): string {
+  const erros = (json as { errors?: Array<{ description?: string }> })?.errors;
+  if (Array.isArray(erros) && erros.length) {
+    return erros.map((e) => e?.description).filter(Boolean).join(' ');
+  }
+  return padrao;
+}
+
 async function asaas(caminho: string, init?: RequestInit): Promise<Response> {
   return await fetch(`${API}${caminho}`, {
     ...init,
@@ -110,7 +122,8 @@ Deno.serve(async (req: Request) => {
   if (!Deno.env.get('ASAAS_API_KEY')) return json({ error: 'ASAAS_API_KEY nao configurada.' }, 500);
 
   try {
-    const { plan, cpfCnpj, billingType, telefone, ciclo } = (await req.json().catch(() => ({}))) ?? {};
+    const { plan, cpfCnpj, billingType, telefone, ciclo, cep, numero, complemento } =
+      (await req.json().catch(() => ({}))) ?? {};
     const forma: 'PIX' | 'CREDIT_CARD' = billingType === 'CREDIT_CARD' ? 'CREDIT_CARD' : 'PIX';
 
     const cfg = planoConfig(String(plan), String(ciclo ?? 'MENSAL'));
@@ -123,6 +136,15 @@ Deno.serve(async (req: Request) => {
     const fone = String(telefone ?? '').replace(/\D/g, '');
     if (fone.length !== 10 && fone.length !== 11) {
       return json({ error: 'Informe um telefone com DDD.' }, 400);
+    }
+
+    // O Asaas exige endereco (address, addressNumber, postalCode, province, city)
+    // no cliente para o checkout de cartao. Mandando CEP + numero, ele completa
+    // rua, bairro e cidade sozinho.
+    const cepLimpo = String(cep ?? '').replace(/\D/g, '');
+    const num = String(numero ?? '').trim().slice(0, 10);
+    if (cepLimpo.length !== 8 || !num) {
+      return json({ error: 'Informe o CEP e o numero do endereco.' }, 400);
     }
 
     const jwt = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
@@ -155,6 +177,9 @@ Deno.serve(async (req: Request) => {
       // dois campos: celular (11 digitos) tambem serve como fixo.
       phone: fone,
       mobilePhone: fone.length === 11 ? fone : undefined,
+      postalCode: cepLimpo,
+      addressNumber: num,
+      complement: String(complemento ?? '').trim().slice(0, 60) || undefined,
       externalReference: user.id,
       notificationDisabled: false,
     };
@@ -165,7 +190,7 @@ Deno.serve(async (req: Request) => {
       const cJson = await rc.json();
       if (!rc.ok) {
         console.error('[asaas-checkout] erro ao criar cliente', JSON.stringify(cJson));
-        return json({ error: cJson?.errors?.[0]?.description ?? 'Nao foi possivel criar seu cadastro de cobranca.' }, 400);
+        return json({ error: mensagemErro(cJson, 'Nao foi possivel criar seu cadastro de cobranca.') }, 400);
       }
       customerId = cJson.id;
     } else {
@@ -208,7 +233,7 @@ Deno.serve(async (req: Request) => {
       const kJson = await rk.json();
       if (!rk.ok) {
         console.error('[asaas-checkout] erro no checkout cartao', JSON.stringify(kJson), 'enviado:', JSON.stringify(corpo));
-        return json({ error: kJson?.errors?.[0]?.description ?? 'Nao foi possivel abrir o pagamento.' }, 400);
+        return json({ error: mensagemErro(kJson, 'Nao foi possivel abrir o pagamento.') }, 400);
       }
       url = kJson?.link ?? kJson?.checkoutUrl ?? kJson?.url ?? null;
     } else {
@@ -227,7 +252,7 @@ Deno.serve(async (req: Request) => {
       const sJson = await rs.json();
       if (!rs.ok) {
         console.error('[asaas-checkout] erro na assinatura pix', JSON.stringify(sJson));
-        return json({ error: sJson?.errors?.[0]?.description ?? 'Nao foi possivel iniciar a assinatura.' }, 400);
+        return json({ error: mensagemErro(sJson, 'Nao foi possivel iniciar a assinatura.') }, 400);
       }
       asaasSubId = sJson?.id ?? null;
 

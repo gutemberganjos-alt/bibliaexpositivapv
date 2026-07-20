@@ -478,3 +478,53 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #C9A84C;
 }
+
+/* ---- Caixa dos dados de cobrança (tela de assinatura) ---- */
+.dados-cobranca {
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-card, 12px);
+  background: rgba(255, 254, 250, 0.7);
+  padding: 1.1rem;
+  margin-top: 0.25rem;
+}
+.dados-cobranca-titulo {
+  font-size: .78rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--cor-texto-medio);
+  margin-bottom: .9rem;
+}
+.campo-rotulo {
+  display: block;
+  font-size: .875rem;
+  color: var(--cor-texto-medio);
+  margin-bottom: .3rem;
+}
+.obrigatorio { color: var(--cor-erro); }
+.opcional { color: var(--cor-texto-dim); font-size: .8rem; }
+.campo-erro { font-size: .75rem; color: var(--cor-erro); margin-top: .3rem; }
+.dados-cobranca-nota {
+  font-size: .75rem;
+  color: var(--cor-texto-dim);
+  margin-top: 1rem;
+  padding-top: .8rem;
+  border-top: 1px solid var(--cor-borda);
+}
+
+/* Os campos da caixa de cobrança precisam de contorno próprio: sem isto eles
+   herdam o reset do Tailwind e ficam com cara de texto solto, sem caixa. */
+.dados-cobranca input {
+  background-color: var(--cor-fundo-input);
+  border: 1px solid var(--cor-borda);
+  border-radius: 10px;
+  color: var(--cor-pergaminho);
+  padding: .6rem .75rem;
+  font-size: .95rem;
+  transition: var(--transicao);
+}
+.dados-cobranca input::placeholder { color: var(--cor-texto-dim); }
+.dados-cobranca input:focus {
+  border-color: var(--cor-ouro);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(169,124,30,0.15);
+}

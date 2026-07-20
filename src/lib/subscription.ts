@@ -142,6 +142,20 @@ export function formatarTelefone(valor: string): string {
   return d.replace(/(\d{2})(\d{5})(\d{1,4})/, '($1) $2-$3');
 }
 
+/**
+ * CEP com 8 dígitos. O Asaas exige endereço do cliente para o cartão, mas
+ * completa rua, bairro e cidade a partir do CEP — só pedimos CEP e número.
+ */
+export function cepValido(cep: string): boolean {
+  return (cep ?? '').replace(/\D/g, '').length === 8;
+}
+
+/** Máscara visual de CEP: 01310-100 */
+export function formatarCep(valor: string): string {
+  const d = (valor ?? '').replace(/\D/g, '').slice(0, 8);
+  return d.length > 5 ? d.replace(/(\d{5})(\d{1,3})/, '$1-$2') : d;
+}
+
 /** Máscara visual de CPF/CNPJ enquanto o usuário digita. */
 export function formatarDocumento(valor: string): string {
   const d = (valor ?? '').replace(/\D/g, '').slice(0, 14);
@@ -165,10 +179,13 @@ export async function startCheckout(
   billingType: FormaPagamento,
   telefone: string,
   ciclo: Ciclo,
+  cep: string,
+  numero: string,
+  complemento?: string,
 ): Promise<void> {
   const { data, error } = await supabase.functions.invoke<{ url?: string; error?: string }>(
     'asaas-checkout',
-    { body: { plan, cpfCnpj, billingType, telefone, ciclo } },
+    { body: { plan, cpfCnpj, billingType, telefone, ciclo, cep, numero, complemento } },
   );
   if (error) {
     // A mensagem útil vem no corpo da resposta da função, não no erro genérico.

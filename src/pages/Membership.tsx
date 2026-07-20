@@ -5,7 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
 import {
   PLANOS, startCheckout, documentoValido, formatarDocumento,
-  telefoneValido, formatarTelefone,
+  telefoneValido, formatarTelefone, cepValido, formatarCep,
   type PlanId, type FormaPagamento, type Ciclo,
 } from '../lib/subscription';
 
@@ -76,13 +76,18 @@ export default function Membership() {
   const [telefone, setTelefone] = useState('');
   const [forma, setForma] = useState<FormaPagamento>('PIX');
   const [ciclo, setCiclo] = useState<Ciclo>('MENSAL');
+  const [cep, setCep] = useState('');
+  const [numero, setNumero] = useState('');
+  const [complemento, setComplemento] = useState('');
   const [erroDoc, setErroDoc] = useState('');
   const [erroTel, setErroTel] = useState('');
+  const [erroEnd, setErroEnd] = useState('');
 
   function escolherPlano(plan: PlanId) {
     setPlanoEscolhido(plan);
     setErroDoc('');
     setErroTel('');
+    setErroEnd('');
   }
 
   async function confirmarAssinatura() {
@@ -96,11 +101,15 @@ export default function Membership() {
       setErroTel('Informe um telefone com DDD.');
       invalido = true;
     } else setErroTel('');
+    if (!cepValido(cep) || !numero.trim()) {
+      setErroEnd('Informe o CEP e o número.');
+      invalido = true;
+    } else setErroEnd('');
     if (invalido) return;
 
     setLoadingPlan(planoEscolhido);
     try {
-      await startCheckout(planoEscolhido, documento, forma, telefone, ciclo);
+      await startCheckout(planoEscolhido, documento, forma, telefone, ciclo, cep, numero, complemento);
     } catch (e) {
       showToast((e as Error).message || 'Não foi possível iniciar a assinatura.', 'error');
       setLoadingPlan(null);
@@ -153,7 +162,8 @@ export default function Membership() {
             Plano {PLANOS[planoEscolhido].nome} — {PLANOS[planoEscolhido].precos[ciclo].precoLabel} {PLANOS[planoEscolhido].precos[ciclo].ciclo}
           </h2>
           <p className="text-xs text-[var(--cor-texto-dim)] mb-4">
-            Precisamos do seu CPF ou CNPJ e telefone para emitir a cobrança.
+            O Asaas exige esses dados para emitir a cobrança. Rua, bairro e cidade
+            vêm automaticamente pelo CEP.
           </p>
 
           <p className="text-sm text-[var(--cor-texto-medio)] mb-2">Como prefere cobrar?</p>
@@ -177,29 +187,78 @@ export default function Membership() {
             })}
           </div>
 
-          <label className="block text-sm text-[var(--cor-texto-medio)] mb-1" htmlFor="doc">CPF ou CNPJ</label>
-          <input
-            id="doc"
-            inputMode="numeric"
-            autoComplete="off"
-            placeholder="000.000.000-00"
-            value={documento}
-            onChange={(e) => { setDocumento(formatarDocumento(e.target.value)); setErroDoc(''); }}
-            className="w-full mb-1"
-          />
-          {erroDoc && <p className="text-xs text-[var(--cor-erro)] mb-2">{erroDoc}</p>}
+          {/* Caixa dos dados de cobrança: tudo aqui é exigido pelo Asaas. */}
+          <div className="dados-cobranca">
+            <p className="dados-cobranca-titulo">Seus dados de cobrança</p>
 
-          <label className="block text-sm text-[var(--cor-texto-medio)] mt-4 mb-1" htmlFor="tel">Telefone com DDD</label>
-          <input
-            id="tel"
-            inputMode="numeric"
-            autoComplete="tel"
-            placeholder="(11) 91234-5678"
-            value={telefone}
-            onChange={(e) => { setTelefone(formatarTelefone(e.target.value)); setErroTel(''); }}
-            className="w-full mb-1"
-          />
-          {erroTel && <p className="text-xs text-[var(--cor-erro)] mb-2">{erroTel}</p>}
+            <label className="campo-rotulo" htmlFor="doc">CPF ou CNPJ <span className="obrigatorio">*</span></label>
+            <input
+              id="doc"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="000.000.000-00"
+              value={documento}
+              onChange={(e) => { setDocumento(formatarDocumento(e.target.value)); setErroDoc(''); }}
+              className="w-full"
+            />
+            {erroDoc && <p className="campo-erro">{erroDoc}</p>}
+
+            <label className="campo-rotulo mt-4" htmlFor="tel">Telefone com DDD <span className="obrigatorio">*</span></label>
+            <input
+              id="tel"
+              inputMode="numeric"
+              autoComplete="tel"
+              placeholder="(11) 91234-5678"
+              value={telefone}
+              onChange={(e) => { setTelefone(formatarTelefone(e.target.value)); setErroTel(''); }}
+              className="w-full"
+            />
+            {erroTel && <p className="campo-erro">{erroTel}</p>}
+
+            <div className="grid grid-cols-3 gap-3 mt-4">
+              <div className="col-span-2">
+                <label className="campo-rotulo" htmlFor="cep">CEP <span className="obrigatorio">*</span></label>
+                <input
+                  id="cep"
+                  inputMode="numeric"
+                  autoComplete="postal-code"
+                  placeholder="01310-100"
+                  value={cep}
+                  onChange={(e) => { setCep(formatarCep(e.target.value)); setErroEnd(''); }}
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label className="campo-rotulo" htmlFor="num">Número <span className="obrigatorio">*</span></label>
+                <input
+                  id="num"
+                  inputMode="numeric"
+                  placeholder="1000"
+                  value={numero}
+                  onChange={(e) => { setNumero(e.target.value); setErroEnd(''); }}
+                  className="w-full"
+                />
+              </div>
+            </div>
+            {erroEnd && <p className="campo-erro">{erroEnd}</p>}
+
+            <label className="campo-rotulo mt-4" htmlFor="compl">
+              Complemento <span className="opcional">(opcional)</span>
+            </label>
+            <input
+              id="compl"
+              autoComplete="address-line2"
+              placeholder="Apto 42, bloco B"
+              value={complemento}
+              onChange={(e) => setComplemento(e.target.value)}
+              className="w-full"
+            />
+
+            <p className="dados-cobranca-nota">
+              <span className="obrigatorio">*</span> Campos obrigatórios. Rua, bairro e cidade
+              vêm automaticamente pelo CEP.
+            </p>
+          </div>
 
           <p className="text-sm text-[var(--cor-texto-medio)] mt-4 mb-2">Como prefere pagar?</p>
           <div className="grid grid-cols-2 gap-3 mb-4">
