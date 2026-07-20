@@ -3,7 +3,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Building2, Check, Crown, ShieldCheck, Loader2 } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
-import { PLANOS, startCheckout, type PlanId } from '../lib/subscription';
+import {
+  PLANOS, startCheckout, documentoValido, formatarDocumento,
+  type PlanId, type FormaPagamento,
+} from '../lib/subscription';
 
 const BENEFITS = [
   'Estudos, sermões e exegeses estruturados',
@@ -64,12 +67,29 @@ export default function Membership() {
 
   const gated = (location.state as { gated?: boolean } | null)?.gated;
 
-  async function assinar(plan: PlanId) {
-    setLoadingPlan(plan);
+  // O Asaas exige CPF/CNPJ e a forma de pagamento na criação da assinatura.
+  const [planoEscolhido, setPlanoEscolhido] = useState<PlanId | null>(null);
+  const [documento, setDocumento] = useState('');
+  const [forma, setForma] = useState<FormaPagamento>('PIX');
+  const [erroDoc, setErroDoc] = useState('');
+
+  function escolherPlano(plan: PlanId) {
+    setPlanoEscolhido(plan);
+    setErroDoc('');
+  }
+
+  async function confirmarAssinatura() {
+    if (!planoEscolhido) return;
+    if (!documentoValido(documento)) {
+      setErroDoc('Informe um CPF ou CNPJ válido.');
+      return;
+    }
+    setErroDoc('');
+    setLoadingPlan(planoEscolhido);
     try {
-      await startCheckout(plan);
+      await startCheckout(planoEscolhido, documento, forma);
     } catch (e) {
-      showToast((e as Error).message || 'Não foi possível abrir o checkout.', 'error');
+      showToast((e as Error).message || 'Não foi possível iniciar a assinatura.', 'error');
       setLoadingPlan(null);
     }
   }
@@ -113,6 +133,64 @@ export default function Membership() {
         </div>
       )}
 
+      {planoEscolhido && !active && (
+        <section className="card p-5 mb-5">
+          <p className="eyebrow mb-1">FINALIZAR ASSINATURA</p>
+          <h2 className="text-lg text-[var(--cor-dourado-claro)] mb-1">
+            Plano {PLANOS[planoEscolhido].nome} — {PLANOS[planoEscolhido].precoLabel} {PLANOS[planoEscolhido].ciclo}
+          </h2>
+          <p className="text-xs text-[var(--cor-texto-dim)] mb-4">
+            Precisamos do seu CPF ou CNPJ para emitir a cobrança. Ele é enviado direto ao Asaas, nosso processador de pagamentos.
+          </p>
+
+          <label className="block text-sm text-[var(--cor-texto-medio)] mb-1" htmlFor="doc">CPF ou CNPJ</label>
+          <input
+            id="doc"
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="000.000.000-00"
+            value={documento}
+            onChange={(e) => { setDocumento(formatarDocumento(e.target.value)); setErroDoc(''); }}
+            className="w-full mb-1"
+          />
+          {erroDoc && <p className="text-xs text-[var(--cor-erro)] mb-2">{erroDoc}</p>}
+
+          <p className="text-sm text-[var(--cor-texto-medio)] mt-4 mb-2">Como prefere pagar?</p>
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <button
+              type="button"
+              onClick={() => setForma('PIX')}
+              className={`card p-3 text-sm ${forma === 'PIX' ? 'border-[var(--cor-dourado)]' : ''}`}
+            >
+              PIX
+              <span className="block text-xs text-[var(--cor-texto-dim)]">Liberação rápida</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setForma('CREDIT_CARD')}
+              className={`card p-3 text-sm ${forma === 'CREDIT_CARD' ? 'border-[var(--cor-dourado)]' : ''}`}
+            >
+              Cartão de crédito
+              <span className="block text-xs text-[var(--cor-texto-dim)]">Renova sozinho</span>
+            </button>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={confirmarAssinatura}
+              disabled={loadingPlan !== null}
+              className="btn-primary flex-1 flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              {loadingPlan !== null && <Loader2 size={16} className="animate-spin" />}
+              Ir para o pagamento
+            </button>
+            <button onClick={() => setPlanoEscolhido(null)} className="btn-secondary" disabled={loadingPlan !== null}>
+              Voltar
+            </button>
+          </div>
+        </section>
+      )}
+
       <section className="membership-benefits card p-5 mb-5">
         {BENEFITS.map((benefit) => <div key={benefit}><Check size={17} /> <span>{benefit}</span></div>)}
       </section>
@@ -125,7 +203,7 @@ export default function Membership() {
           <p>Seu acervo, seus estudos e seus kits em uma experiência única.</p>
           <p className="text-2xl text-[var(--cor-dourado)] font-['Playfair_Display'] mt-4">{PLANOS.individual.precoLabel}<span className="text-sm text-[var(--cor-texto-dim)] font-sans"> {PLANOS.individual.ciclo}</span></p>
           <button
-            onClick={() => assinar('individual')}
+            onClick={() => escolherPlano('individual')}
             disabled={loadingPlan !== null || active}
             className="btn-primary w-full mt-5 flex items-center justify-center gap-2 disabled:opacity-60"
           >
@@ -140,7 +218,7 @@ export default function Membership() {
           <p>Uma base para professores, líderes e ministérios estudarem com unidade.</p>
           <p className="text-2xl text-[var(--cor-dourado)] font-['Playfair_Display'] mt-4">{PLANOS.igreja.precoLabel}<span className="text-sm text-[var(--cor-texto-dim)] font-sans"> {PLANOS.igreja.ciclo}</span></p>
           <button
-            onClick={() => assinar('igreja')}
+            onClick={() => escolherPlano('igreja')}
             disabled={loadingPlan !== null || active}
             className="btn-primary w-full mt-5 flex items-center justify-center gap-2 disabled:opacity-60"
           >

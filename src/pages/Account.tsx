@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { LogOut, User, Mail, Shield, CreditCard, ChevronRight, GraduationCap, Settings, XCircle, Loader2 } from 'lucide-react';
+import { LogOut, User, Mail, Shield, CreditCard, ChevronRight, GraduationCap, XCircle, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
-import { openBillingPortal, cancelSubscription } from '../lib/subscription';
+import { cancelSubscription } from '../lib/subscription';
 
 const TIER_LABEL: Record<string, string> = {
   free: 'Sem assinatura ativa',
@@ -25,20 +25,10 @@ export default function Account() {
   const { subscription, active, refresh } = useSubscription();
   const { showToast } = useToast();
   const navigate = useNavigate();
-  const [busy, setBusy] = useState<'portal' | 'cancel' | null>(null);
+  const [busy, setBusy] = useState<'cancel' | null>(null);
 
   const userName = user?.user_metadata?.full_name || 'Irmão(ã) em Cristo';
   const userEmail = user?.email || 'usuario@email.com';
-
-  async function handlePortal() {
-    setBusy('portal');
-    try {
-      await openBillingPortal();
-    } catch (e) {
-      showToast((e as Error).message || 'Não foi possível abrir o portal.', 'error');
-      setBusy(null);
-    }
-  }
 
   async function handleCancel() {
     if (!confirm('Deseja mesmo cancelar sua assinatura? Se estiver dentro de 7 dias do primeiro pagamento, o reembolso é automático.')) return;
@@ -100,13 +90,14 @@ export default function Account() {
         </p>
 
         {active ? (
-          <div className="flex flex-col sm:flex-row gap-3 mt-5">
-            <button onClick={handlePortal} disabled={busy !== null} className="btn-secondary flex-1 flex items-center justify-center gap-2 disabled:opacity-60">
-              {busy === 'portal' ? <Loader2 size={16} className="animate-spin" /> : <Settings size={16} />} Gerenciar / atualizar cartão
-            </button>
-            {!subscription?.cancel_at_period_end && (
-              <button onClick={handleCancel} disabled={busy !== null} className="btn-destructive flex-1 flex items-center justify-center gap-2 disabled:opacity-60">
-                {busy === 'cancel' ? <Loader2 size={16} className="animate-spin" /> : <XCircle size={16} />} Cancelar
+          <div className="mt-5">
+            {subscription?.cancel_at_period_end ? (
+              <p className="text-xs text-[var(--cor-texto-dim)]">
+                Cancelamento já solicitado. Você mantém o acesso até o fim do período pago.
+              </p>
+            ) : (
+              <button onClick={handleCancel} disabled={busy !== null} className="btn-destructive w-full flex items-center justify-center gap-2 disabled:opacity-60">
+                {busy === 'cancel' ? <Loader2 size={16} className="animate-spin" /> : <XCircle size={16} />} Cancelar assinatura
               </button>
             )}
           </div>
