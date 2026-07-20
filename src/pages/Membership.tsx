@@ -6,7 +6,7 @@ import { useSubscription } from '../contexts/SubscriptionContext';
 import {
   PLANOS, startCheckout, documentoValido, formatarDocumento,
   telefoneValido, formatarTelefone, cepValido, formatarCep,
-  type PlanId, type FormaPagamento, type Ciclo,
+  type PlanId, type FormaPagamento, type Ciclo, type PixCobranca,
 } from '../lib/subscription';
 
 const BENEFITS = [
@@ -22,6 +22,9 @@ export default function Membership() {
   const location = useLocation();
   const navigate = useNavigate();
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
+  // Cobrança PIX exibida dentro do app (QR + copia-e-cola).
+  const [pix, setPix] = useState<PixCobranca | null>(null);
+  const [copiado, setCopiado] = useState(false);
 
   // Retorno do pagamento. O Asaas recusa URLs de callback com "?", então o status
   // chega no caminho (/assinatura/sucesso). Aceitamos as duas formas por segurança.
@@ -61,6 +64,15 @@ export default function Membership() {
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [confirmando]);
+
+  // PIX exibido no app: consulta o banco a cada 4s até o webhook confirmar.
+  // Sem isso o cliente pagaria e ficaria olhando para o QR sem saber de nada.
+  useEffect(() => {
+    if (!pix || active) return;
+    const id = setInterval(() => { void refresh(); }, 4000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pix, active]);
 
   // Assinatura confirmada: limpa a URL de retorno.
   useEffect(() => {
@@ -109,7 +121,14 @@ export default function Membership() {
 
     setLoadingPlan(planoEscolhido);
     try {
-      await startCheckout(planoEscolhido, documento, forma, telefone, ciclo, cep, numero, complemento);
+      const r = await startCheckout(planoEscolhido, documento, forma, telefone, ciclo, cep, numero, complemento);
+      if (r.tipo === 'pix') {
+        // PIX fica no app: mostramos o QR aqui e esperamos o webhook confirmar.
+        setPix(r.pix);
+        setLoadingPlan(null);
+      } else {
+        window.location.href = r.url;
+      }
     } catch (e) {
       showToast((e as Error).message || 'Não foi possível iniciar a assinatura.', 'error');
       setLoadingPlan(null);
@@ -155,7 +174,62 @@ export default function Membership() {
         </div>
       )}
 
-      {planoEscolhido && !active && (
+      {/* PIX dentro do app: QR code + copia-e-cola, aguardando a confirmação. */}
+      {pix && !active && (
+        <section className="card p-5 mb-5 text-center">
+          <p className="eyebrow mb-1">PAGUE COM PIX</p>
+          <h2 className="text-lg text-[var(--cor-dourado-claro)] mb-3">
+            Abra o app do seu banco e escaneie o código
+          </h2>
+
+          {pix.imagemBase64 && (
+            <img
+              src={`data:image/png;base64,${pix.imagemBase64}`}
+              alt="QR code do PIX"
+              className="mx-auto w-52 h-52 rounded-lg bg-white p-2"
+            />
+          )}
+
+          <p className="text-sm text-[var(--cor-texto-medio)] mt-4 mb-2">
+            Ou copie o código e cole no seu banco:
+          </p>
+          <textarea
+            readOnly
+            value={pix.copiaECola}
+            onFocus={(e) => e.currentTarget.select()}
+            className="w-full text-xs h-20 dados-cobranca"
+          />
+          <button
+            type="button"
+            className="btn-primary w-full mt-2"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(pix.copiaECola);
+                setCopiado(true);
+                setTimeout(() => setCopiado(false), 2500);
+              } catch {
+                showToast('Não consegui copiar. Selecione o código e copie manualmente.', 'info');
+              }
+            }}
+          >
+            {copiado ? 'Código copiado!' : 'Copiar código PIX'}
+          </button>
+
+          <p className="text-sm text-[var(--cor-dourado-claro)] flex items-center justify-center gap-2 mt-5">
+            <Loader2 size={16} className="animate-spin" />
+            Aguardando o pagamento…
+          </p>
+          <p className="text-xs text-[var(--cor-texto-dim)] mt-1">
+            Assim que o banco confirmar, esta tela libera sozinha. Pode deixar aberta.
+          </p>
+
+          <button onClick={() => setPix(null)} className="btn-secondary mt-4">
+            Voltar
+          </button>
+        </section>
+      )}
+
+      {planoEscolhido && !active && !pix && (
         <section className="card p-5 mb-5">
           <p className="eyebrow mb-1">FINALIZAR ASSINATURA</p>
           <h2 className="text-lg text-[var(--cor-dourado-claro)] mb-1">

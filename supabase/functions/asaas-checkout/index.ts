@@ -208,6 +208,12 @@ Deno.serve(async (req: Request) => {
 
     let url: string | null = null;
     let asaasSubId: string | null = null;
+    let pix: {
+      copiaECola: string;
+      imagemBase64: string | null;
+      invoiceUrl: string | null;
+      expiraEm: string | null;
+    } | null = null;
 
     if (forma === 'CREDIT_CARD') {
       const corpo = {
@@ -260,6 +266,23 @@ Deno.serve(async (req: Request) => {
       const pJson = await rp.json();
       const cobranca = Array.isArray(pJson?.data) ? pJson.data[0] : null;
       url = cobranca?.invoiceUrl ?? null;
+
+      // QR code do PIX para exibir DENTRO do app. Sem isso o cliente cai na
+      // pagina do Asaas e fica sem caminho de volta depois de pagar.
+      if (cobranca?.id) {
+        const rq = await asaas(`/payments/${cobranca.id}/pixQrCode`);
+        const qJson = await rq.json().catch(() => null);
+        if (rq.ok && qJson?.payload) {
+          pix = {
+            copiaECola: qJson.payload,
+            imagemBase64: qJson.encodedImage ?? null,
+            invoiceUrl: cobranca.invoiceUrl ?? null,
+            expiraEm: qJson.expirationDate ?? null,
+          };
+        } else {
+          console.error('[asaas-checkout] sem QR code do pix', JSON.stringify(qJson));
+        }
+      }
     }
 
     const linhaBase = {
@@ -280,6 +303,10 @@ Deno.serve(async (req: Request) => {
       const { error } = await admin.from('subscriptions').insert(linhaBase);
       if (error) console.error('[asaas-checkout] falha ao criar intencao', error.message);
     }
+
+    // PIX: devolve o QR code para a tela do app. Se o QR falhar, ainda temos a
+    // fatura como saida de emergencia (melhor que travar o cliente).
+    if (pix) return json({ pix });
 
     if (!url) {
       console.error('[asaas-checkout] sem link de pagamento');

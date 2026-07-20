@@ -169,9 +169,25 @@ export function formatarDocumento(valor: string): string {
     .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
 }
 
+/** Dados do PIX exibidos dentro do app — o cliente não sai da Bíblia Expositiva. */
+export interface PixCobranca {
+  copiaECola: string;
+  imagemBase64: string | null;
+  invoiceUrl: string | null;
+  expiraEm: string | null;
+}
+
 /**
- * Cria a assinatura no Asaas e leva o usuário à página de cobrança (PIX ou cartão).
- * O acesso só libera quando o webhook confirmar o pagamento.
+ * Cartão vai para o checkout do Asaas (precisa da tela deles, por segurança do
+ * cartão). PIX fica no app: mostramos o QR code aqui mesmo.
+ */
+export type ResultadoCheckout =
+  | { tipo: 'redirect'; url: string }
+  | { tipo: 'pix'; pix: PixCobranca };
+
+/**
+ * Cria a assinatura no Asaas. O acesso só libera quando o webhook confirmar o
+ * pagamento — por isso a tela fica aguardando em vez de liberar na hora.
  */
 export async function startCheckout(
   plan: PlanId,
@@ -182,11 +198,12 @@ export async function startCheckout(
   cep: string,
   numero: string,
   complemento?: string,
-): Promise<void> {
-  const { data, error } = await supabase.functions.invoke<{ url?: string; error?: string }>(
-    'asaas-checkout',
-    { body: { plan, cpfCnpj, billingType, telefone, ciclo, cep, numero, complemento } },
-  );
+): Promise<ResultadoCheckout> {
+  const { data, error } = await supabase.functions.invoke<{
+    url?: string; pix?: PixCobranca; error?: string;
+  }>('asaas-checkout', {
+    body: { plan, cpfCnpj, billingType, telefone, ciclo, cep, numero, complemento },
+  });
   if (error) {
     // A mensagem útil vem no corpo da resposta da função, não no erro genérico.
     let detalhe = '';
@@ -197,8 +214,9 @@ export async function startCheckout(
     throw new Error(detalhe || error.message);
   }
   if (data?.error) throw new Error(data.error);
-  if (!data?.url) throw new Error('Não foi possível iniciar a assinatura.');
-  window.location.href = data.url;
+  if (data?.pix?.copiaECola) return { tipo: 'pix', pix: data.pix };
+  if (data?.url) return { tipo: 'redirect', url: data.url };
+  throw new Error('Não foi possível iniciar a assinatura.');
 }
 
 export interface CancelResult { canceled: boolean; refunded: boolean; message: string }
