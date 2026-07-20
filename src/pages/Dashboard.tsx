@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, BookOpen, FolderHeart, Sparkles, X } from 'lucide-react';
-import { getSavedStudies } from '../lib/study-library';
+import { fetchStudies, getCachedStudies } from '../lib/study-library';
 
 const OBJECTIVES = [
   { id: 'devocao', title: 'Crescer na Palavra', description: 'Devocionais e estudos para sua caminhada diária.' },
@@ -19,7 +19,13 @@ function getObjective() {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const savedCount = getSavedStudies().length;
+  // Mostra o número do cache na hora e corrige com o do banco quando chegar.
+  const [savedCount, setSavedCount] = useState(() => getCachedStudies().length);
+  useEffect(() => {
+    let ativo = true;
+    void fetchStudies().then((lista) => { if (ativo) setSavedCount(lista.length); });
+    return () => { ativo = false; };
+  }, []);
   const [objective, setObjective] = useState(getObjective);
   const selectedObjective = OBJECTIVES.find((item) => item.id === objective);
 

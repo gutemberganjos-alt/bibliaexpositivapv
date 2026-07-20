@@ -1,20 +1,39 @@
-import { useState } from 'react';
-import { BookOpen, ChevronRight, FolderHeart, Trash2 } from 'lucide-react';
-import { deleteStudy, getSavedStudies } from '../lib/study-library';
+import { useEffect, useState } from 'react';
+import { BookOpen, ChevronRight, FolderHeart, Loader2, Trash2 } from 'lucide-react';
+import { deleteStudy, fetchStudies, getCachedStudies } from '../lib/study-library';
 import type { SavedStudy } from '../lib/study-library';
 import { nomeDoModo, nomeDoPublico } from '../lib/ai-config';
+import { useToast } from '../contexts/ToastContext';
 
 function dateLabel(iso: string) {
   return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(new Date(iso));
 }
 
 export default function Library() {
-  const [studies, setStudies] = useState(getSavedStudies);
+  const { showToast } = useToast();
+  // Abre com o espelho local para a tela não piscar vazia, e troca pelo que
+  // vier do banco assim que chegar.
+  const [studies, setStudies] = useState<SavedStudy[]>(getCachedStudies);
+  const [carregando, setCarregando] = useState(true);
   const [openStudy, setOpenStudy] = useState<SavedStudy | null>(null);
 
-  const remove = (id: string) => {
-    deleteStudy(id);
-    setStudies(getSavedStudies());
+  useEffect(() => {
+    let ativo = true;
+    fetchStudies()
+      .then((lista) => { if (ativo) setStudies(lista); })
+      .finally(() => { if (ativo) setCarregando(false); });
+    return () => { ativo = false; };
+  }, []);
+
+  const remove = async (id: string) => {
+    const antes = studies;
+    setStudies((atual) => atual.filter((e) => e.id !== id));
+    try {
+      await deleteStudy(id);
+    } catch (e) {
+      setStudies(antes); // desfaz na tela se o banco recusou
+      showToast((e as Error).message, 'error');
+    }
   };
 
   if (openStudy) {
@@ -37,14 +56,19 @@ export default function Library() {
       <header className="mb-7 pt-3">
         <p className="eyebrow">SEU ACERVO</p>
         <h1 className="font-['Playfair_Display'] text-3xl text-[var(--cor-dourado)] mb-2">Biblioteca</h1>
-        <p className="text-sm text-[var(--cor-texto-medio)]">Tudo o que você decidiu guardar para ensinar, pregar e voltar a estudar.</p>
+        <p className="text-sm text-[var(--cor-texto-medio)]">Tudo o que você decidiu guardar para ensinar, pregar e voltar a estudar. Salvo na sua conta — aparece em qualquer aparelho.</p>
       </header>
 
-      {studies.length === 0 ? (
+      {carregando && studies.length === 0 ? (
+        <div className="card p-8 text-center">
+          <Loader2 size={26} className="text-[var(--cor-dourado)] mx-auto mb-3 animate-spin" />
+          <p className="text-sm text-[var(--cor-texto-medio)]">Carregando sua biblioteca…</p>
+        </div>
+      ) : studies.length === 0 ? (
         <div className="card p-8 text-center">
           <FolderHeart size={34} className="text-[var(--cor-dourado)] mx-auto mb-4" />
           <h2 className="text-lg text-[var(--cor-dourado-claro)] mb-2">Sua biblioteca começa com um estudo</h2>
-          <p className="text-sm text-[var(--cor-texto-medio)]">Ao terminar um material, use “Salvar na biblioteca”. Ele ficará disponível aqui neste dispositivo.</p>
+          <p className="text-sm text-[var(--cor-texto-medio)]">Ao terminar um material, use “Salvar na biblioteca”. Ele fica guardado na sua conta e acompanha você em qualquer aparelho.</p>
         </div>
       ) : (
         <div className="space-y-3">

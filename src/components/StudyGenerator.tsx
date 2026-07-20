@@ -134,11 +134,22 @@ export default function StudyGenerator({
     setMostrarKit(false);
   };
 
-  const handleSalvar = () => {
-    if (!resultado || salvo) return;
-    saveStudy({ ...resultado, modoId, publicoId, referencia });
-    setSalvo(true);
-    showToast('Estudo salvo na sua biblioteca', 'success');
+  const [salvando, setSalvando] = useState(false);
+
+  const handleSalvar = async () => {
+    if (!resultado || salvo || salvando) return;
+    setSalvando(true);
+    try {
+      // Só marcamos como salvo DEPOIS que o banco confirmou. Dizer "salvo" antes
+      // e falhar na gravação seria prometer o que não aconteceu.
+      await saveStudy({ ...resultado, modoId, publicoId, referencia });
+      setSalvo(true);
+      showToast('Estudo salvo na sua biblioteca', 'success');
+    } catch (e) {
+      showToast((e as Error).message, 'error');
+    } finally {
+      setSalvando(false);
+    }
   };
 
   // ---------- TELA DE RESULTADO (inclui o streaming em andamento) ----------
@@ -171,8 +182,8 @@ export default function StudyGenerator({
           <div className="flex gap-2 shrink-0">
             <button
               onClick={handleSalvar}
-              disabled={emStream || salvo}
-              title={salvo ? 'Estudo salvo' : 'Salvar na biblioteca'}
+              disabled={emStream || salvo || salvando}
+              title={salvo ? 'Estudo salvo' : salvando ? 'Salvando…' : 'Salvar na biblioteca'}
               className={`p-2 rounded border border-[var(--cor-borda)] transition-colors ${salvo ? 'text-[var(--cor-sucesso)]' : 'text-[var(--cor-texto-medio)] hover:text-[var(--cor-dourado)] hover:border-[var(--cor-borda-hover)]'} ${emStream ? 'opacity-40 cursor-not-allowed' : ''}`}
             >
               {salvo ? <Check size={16} /> : <BookmarkPlus size={16} />}
