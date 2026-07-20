@@ -35,9 +35,13 @@ function planoConfig(plan: string): { valor: number; tier: 'premium' | 'church';
   return null;
 }
 
-/** Base do site: sempre https, sem barra no fim, sem caminho/query herdados. */
+/**
+ * Base do site: sempre https, sem barra no fim, sem caminho/query herdados.
+ * Também tolera o secret colado como "APP_URL=https://..." (erro comum no painel)
+ * e aspas em volta — em vez de mandar lixo pro Asaas e quebrar o pagamento.
+ */
 function baseDoApp(bruto: string): string {
-  let v = (bruto ?? '').trim();
+  let v = (bruto ?? '').trim().replace(/^APP_URL\s*=\s*/i, '').replace(/^["']|["']$/g, '').trim();
   if (!v) return 'https://www.bibliaexpositivapv.com.br';
   if (!/^https?:\/\//i.test(v)) v = `https://${v}`;
   try {
