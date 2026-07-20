@@ -82,7 +82,11 @@ Deno.serve(async (req: Request) => {
   if (!Deno.env.get('ASAAS_API_KEY')) return json({ error: 'ASAAS_API_KEY não configurada.' }, 500);
 
   try {
-    const { plan, cpfCnpj } = (await req.json().catch(() => ({}))) ?? {};
+    const { plan, cpfCnpj, billingType } = (await req.json().catch(() => ({}))) ?? {};
+    // REGRA DO ASAAS: em operacoes RECURRENT o Checkout so aceita CREDIT_CARD.
+    // Por isso: cartao -> Checkout (tela limpa, renova sozinho)
+    //           PIX    -> assinatura + fatura com QR code
+    const forma: 'PIX' | 'CREDIT_CARD' = billingType === 'CREDIT_CARD' ? 'CREDIT_CARD' : 'PIX';
 
     const cfg = planoConfig(String(plan));
     if (!cfg) return json({ error: 'Plano inválido.' }, 400);
@@ -134,37 +138,71 @@ Deno.serve(async (req: Request) => {
     const hoje = new Date().toISOString().slice(0, 10);
 
     // Checkout: PIX + cartão na mesma tela, cobrança recorrente mensal.
-    const rk = await asaas('/checkouts', {
-      method: 'POST',
-      body: JSON.stringify({
-        billingTypes: ['PIX', 'CREDIT_CARD'],
-        chargeTypes: ['RECURRENT'],
-        minutesToExpire: 60,
-        customer: customerId,
-        externalReference: user.id, // elo com o nosso banco (o webhook usa isto)
-        callback: {
-          successUrl: `${appUrl}/assinatura?status=sucesso`,
-          cancelUrl: `${appUrl}/assinatura?status=cancelado`,
-          expiredUrl: `${appUrl}/assinatura?status=expirado`,
-        },
-        items: [{ name: cfg.nome, description: 'Assinatura mensal', quantity: 1, value: cfg.valor }],
-        subscription: { cycle: 'MONTHLY', nextDueDate: hoje },
-      }),
-    });
-    const kJson = await rk.json();
-    if (!rk.ok) {
-      console.error('[asaas-checkout] erro ao criar checkout', kJson);
-      return json({ error: kJson?.errors?.[0]?.description ?? 'Não foi possível abrir o pagamento.' }, 400);
+    let url: string | null = null;
+    let asaasSubId: string | null = null;
+
+    if (forma === 'CREDIT_CARD') {
+      // Checkout do Asaas: tela limpa, cobranca recorrente automatica no cartao.
+      const rk = await asaas('/checkouts', {
+        method: 'POST',
+        body: JSON.stringify({
+          billingTypes: ['CREDIT_CARD'],
+          chargeTypes: ['RECURRENT'],
+          minutesToExpire: 60,
+          customer: customerId,
+          externalReference: user.id,
+          callback: {
+            successUrl: `${appUrl}/assinatura?status=sucesso`,
+            cancelUrl: `${appUrl}/assinatura?status=cancelado`,
+            expiredUrl: `${appUrl}/assinatura?status=expirado`,
+          },
+          items: [{ name: cfg.nome, description: 'Assinatura mensal', quantity: 1, value: cfg.valor }],
+          subscription: { cycle: 'MONTHLY', nextDueDate: hoje },
+        }),
+      });
+      const kJson = await rk.json();
+      if (!rk.ok) {
+        console.error('[asaas-checkout] erro no checkout cartao', JSON.stringify(kJson));
+        return json({ error: kJson?.errors?.[0]?.description ?? 'Nao foi possivel abrir o pagamento.' }, 400);
+      }
+      url = kJson?.link ?? kJson?.checkoutUrl ?? kJson?.url ?? null;
+    } else {
+      // PIX: o Checkout nao aceita PIX recorrente, entao criamos a assinatura
+      // e mandamos o cliente para a fatura com o QR code.
+      const rs = await asaas('/subscriptions', {
+        method: 'POST',
+        body: JSON.stringify({
+          customer: customerId,
+          billingType: 'PIX',
+          value: cfg.valor,
+          nextDueDate: hoje,
+          cycle: 'MONTHLY',
+          description: cfg.nome,
+          externalReference: user.id,
+        }),
+      });
+      const sJson = await rs.json();
+      if (!rs.ok) {
+        console.error('[asaas-checkout] erro na assinatura pix', JSON.stringify(sJson));
+        return json({ error: sJson?.errors?.[0]?.description ?? 'Nao foi possivel iniciar a assinatura.' }, 400);
+      }
+      asaasSubId = sJson?.id ?? null;
+
+      const rp = await asaas(`/subscriptions/${sJson.id}/payments`);
+      const pJson = await rp.json();
+      const cobranca = Array.isArray(pJson?.data) ? pJson.data[0] : null;
+      url = cobranca?.invoiceUrl ?? null;
     }
 
-    // Marca a intenção de assinatura. Vira 'active' quando o webhook confirmar.
     const linhaBase = {
       user_id: user.id,
       tier: cfg.tier,
       status: 'incomplete',
       value: cfg.valor,
       cycle: 'MONTHLY',
+      billing_type: forma,
       asaas_customer_id: customerId,
+      ...(asaasSubId ? { asaas_subscription_id: asaasSubId } : {}),
       updated_at: new Date().toISOString(),
     };
     if (existente?.id) {

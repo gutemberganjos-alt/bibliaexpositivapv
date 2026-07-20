@@ -109,10 +109,14 @@ export function formatarDocumento(valor: string): string {
  * Cria a assinatura no Asaas e leva o usuário à página de cobrança (PIX ou cartão).
  * O acesso só libera quando o webhook confirmar o pagamento.
  */
-export async function startCheckout(plan: PlanId, cpfCnpj: string): Promise<void> {
+export async function startCheckout(
+  plan: PlanId,
+  cpfCnpj: string,
+  billingType: FormaPagamento,
+): Promise<void> {
   const { data, error } = await supabase.functions.invoke<{ url?: string; error?: string }>(
     'asaas-checkout',
-    { body: { plan, cpfCnpj } },
+    { body: { plan, cpfCnpj, billingType } },
   );
   if (error) {
     // A mensagem útil vem no corpo da resposta da função, não no erro genérico.
