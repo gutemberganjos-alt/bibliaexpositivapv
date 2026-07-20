@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Building2, Check, Crown, ShieldCheck, Loader2 } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
@@ -19,25 +19,48 @@ export default function Membership() {
   const navigate = useNavigate();
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
 
-  // Retorno do Checkout da Stripe (?status=sucesso|cancelado)
+  // Retorno do Checkout da Stripe (?status=sucesso|cancelado).
+  // O estado é DERIVADO da URL — nada de setState em efeito, e a limpeza da URL
+  // não cancela a confirmação (foi esse o bug: os timers morriam na hora).
+  const statusRetorno = new URLSearchParams(location.search).get('status');
+  const [desistiu, setDesistiu] = useState(false);
+  const confirmando = statusRetorno === 'sucesso' && !active && !desistiu;
+  const avisou = useRef(false);
+
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const status = params.get('status');
-    if (status === 'sucesso') {
-      showToast('Pagamento recebido! Estamos liberando seu acesso...', 'success');
-      // O webhook pode levar alguns segundos; atualiza algumas vezes.
-      void refresh();
-      const t1 = setTimeout(() => void refresh(), 3000);
-      const t2 = setTimeout(() => void refresh(), 8000);
-      navigate('/assinatura', { replace: true });
-      return () => { clearTimeout(t1); clearTimeout(t2); };
-    }
-    if (status === 'cancelado') {
+    if (!statusRetorno || avisou.current) return;
+    avisou.current = true;
+    if (statusRetorno === 'sucesso') {
+      showToast('Pagamento recebido! Confirmando sua assinatura...', 'success');
+    } else if (statusRetorno === 'cancelado') {
       showToast('Checkout cancelado. Você pode tentar novamente quando quiser.', 'info');
       navigate('/assinatura', { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.search]);
+  }, [statusRetorno]);
+
+  // O webhook da Stripe leva alguns segundos: consulta repetidamente até a
+  // assinatura aparecer (~40s), em vez de checar uma vez e dizer que não existe.
+  useEffect(() => {
+    if (!confirmando) return;
+    let tentativas = 0;
+    const id = setInterval(() => {
+      tentativas += 1;
+      void refresh();
+      if (tentativas >= 16) {
+        clearInterval(id);
+        setDesistiu(true);
+      }
+    }, 2500);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [confirmando]);
+
+  // Assinatura confirmada: limpa a URL de retorno.
+  useEffect(() => {
+    if (statusRetorno === 'sucesso' && active) navigate('/assinatura', { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusRetorno, active]);
 
   const gated = (location.state as { gated?: boolean } | null)?.gated;
 
@@ -59,7 +82,17 @@ export default function Membership() {
         <p className="text-[var(--cor-texto-medio)] text-sm max-w-xl mx-auto">A Bíblia Expositiva é um serviço por assinatura, construído para estudo consistente e preparo de aulas e mensagens.</p>
       </header>
 
-      {gated && !active && (
+      {confirmando && !active && (
+        <div className="card p-4 mb-5 text-center">
+          <p className="text-sm text-[var(--cor-dourado-claro)] flex items-center justify-center gap-2">
+            <Loader2 size={16} className="animate-spin" />
+            Pagamento recebido. Confirmando sua assinatura — isso leva alguns segundos.
+          </p>
+          <p className="text-xs text-[var(--cor-texto-dim)] mt-1">Pode deixar esta página aberta; o acesso libera sozinho.</p>
+        </div>
+      )}
+
+      {gated && !active && !confirmando && (
         <div className="card p-4 mb-5 border-[var(--cor-dourado)]/40 text-center">
           <p className="text-sm text-[var(--cor-dourado-claro)]">Este recurso é exclusivo para assinantes. Escolha um plano para liberar a geração de estudos.</p>
         </div>

@@ -51,7 +51,7 @@ export default function Bible() {
       const data: BibleApiResponse = await response.json();
       setVerses(data.verses);
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (err) {
+    } catch {
       setError('Não foi possível carregar este capítulo. Verifique sua conexão.');
     } finally {
       setLoading(false);

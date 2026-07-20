@@ -29,7 +29,7 @@ export default function ForgotPassword() {
       } else {
         setSuccess(true);
       }
-    } catch (err: any) {
+    } catch {
       setError('Algo deu errado. Tente novamente.');
     } finally {
       setLoading(false);

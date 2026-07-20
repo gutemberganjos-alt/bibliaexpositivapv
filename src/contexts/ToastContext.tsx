@@ -27,8 +27,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       return newToasts;
     });
 
+    // Remove direto pelo setToasts: usar removeToast aqui referenciava uma
+    // variável declarada abaixo (acesso antes da declaração).
     setTimeout(() => {
-      removeToast(id);
+      setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 4000);
   }, []);
 

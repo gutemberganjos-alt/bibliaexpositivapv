@@ -29,7 +29,22 @@ const ENFORCE_SUBSCRIPTION = (Deno.env.get('ENFORCE_SUBSCRIPTION') ?? 'true') !=
  * Limites (definidos na função consume_quota do banco): premium=30/mês, church=150/mês.
  * Quando ENFORCE_SUBSCRIPTION está desligado, sempre libera (dev/testes).
  */
-async function verificarAssinaturaEQuota(req: Request): Promise<{ ok: boolean; status?: number; error?: string }> {
+/** Devolve a franquia consumida quando a geração falha (não cobra do assinante por erro nosso). */
+async function devolverQuota(uid: string | null): Promise<void> {
+  if (!uid || !ENFORCE_SUBSCRIPTION) return;
+  try {
+    const url = Deno.env.get('SUPABASE_URL');
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!url || !serviceKey) return;
+    await fetch(`${url}/rest/v1/rpc/refund_quota`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', apikey: serviceKey, authorization: `Bearer ${serviceKey}` },
+      body: JSON.stringify({ p_user_id: uid }),
+    });
+  } catch (_e) { /* devolução é best-effort */ }
+}
+
+async function verificarAssinaturaEQuota(req: Request): Promise<{ ok: boolean; status?: number; error?: string; uid?: string }> {
   if (!ENFORCE_SUBSCRIPTION) return { ok: true };
   try {
     const url = Deno.env.get('SUPABASE_URL');
@@ -65,7 +80,7 @@ async function verificarAssinaturaEQuota(req: Request): Promise<{ ok: boolean; s
         error: `Limite mensal do seu plano atingido (${row.used}/${row.limit_val} gerações). A franquia renova no início do próximo mês.`,
       };
     }
-    return { ok: true };
+    return { ok: true, uid };
   } catch (_e) {
     return { ok: false, status: 403, error: 'Falha ao validar a assinatura.' };
   }
@@ -93,8 +108,13 @@ Deno.serve(async (req: Request) => {
     const assinatura = await verificarAssinaturaEQuota(req);
     if (!assinatura.ok) return json({ error: assinatura.error }, assinatura.status ?? 402);
 
+    const uid = assinatura.uid ?? null;
+
     const apiKey = await obterChaveGemini();
-    if (!apiKey) return json({ error: 'GEMINI_API_KEY não configurada.' }, 500);
+    if (!apiKey) {
+      await devolverQuota(uid);
+      return json({ error: 'GEMINI_API_KEY não configurada.' }, 500);
+    }
 
     const system = montarPrompt(modoId, publicoId, perfilId);
     const userMsg = `Texto/tema solicitado: ${referencia}\n\nGere o material completo conforme o MODO e o PÚBLICO definidos nas instruções do sistema. Lembre-se: responda APENAS com o JSON especificado.`;
@@ -111,12 +131,13 @@ Deno.serve(async (req: Request) => {
     });
 
     if (querStream) {
-      return await responderStream(apiKey, body, { modoId, publicoId, referencia });
+      return await responderStream(apiKey, body, { modoId, publicoId, referencia, uid });
     }
 
     // ---------- Caminho não-stream (JSON único) ----------
     const { resp, erro } = await chamarComRetry(apiKey, body, false);
     if (!resp) {
+      await devolverQuota(uid);
       const dica = erro.status === 503 || erro.status === 429
         ? 'O serviço de IA está sobrecarregado no momento. Tente novamente em alguns instantes.'
         : (erro.msg || 'tente novamente');
@@ -132,11 +153,15 @@ Deno.serve(async (req: Request) => {
 
     if (!texto) {
       console.error('Resposta vazia. finishReason:', cand?.finishReason);
+      await devolverQuota(uid);
       return json({ error: 'Resposta vazia do modelo. Tente novamente.' }, 502);
     }
 
     const match = texto.match(/\{[\s\S]*\}/);
-    if (!match) return json({ error: 'Resposta em formato inesperado.' }, 502);
+    if (!match) {
+      await devolverQuota(uid);
+      return json({ error: 'Resposta em formato inesperado.' }, 502);
+    }
 
     let parsed;
     try {
@@ -147,7 +172,10 @@ Deno.serve(async (req: Request) => {
 
     const resultado = montarResultado(parsed, referencia, publicoId);
     const validacao = validarResultado(resultado.html, modoId);
-    if (!validacao.valido) return json({ error: validacao.erro }, 502);
+    if (!validacao.valido) {
+      await devolverQuota(uid);
+      return json({ error: validacao.erro }, 502);
+    }
     return json(resultado);
   } catch (e) {
     console.error(e);
@@ -160,7 +188,7 @@ Deno.serve(async (req: Request) => {
 async function responderStream(
   apiKey: string,
   body: string,
-  ctx: { modoId: string; publicoId: string; referencia: string },
+  ctx: { modoId: string; publicoId: string; referencia: string; uid: string | null },
 ): Promise<Response> {
   const { resp, erro } = await chamarComRetry(apiKey, body, true);
 
@@ -169,6 +197,7 @@ async function responderStream(
   // Se nem o stream iniciou, devolve um SSE curto só com o erro (o cliente
   // sempre lê SSE quando pediu stream).
   if (!resp || !resp.body) {
+    await devolverQuota(ctx.uid);
     const dica = erro.status === 503 || erro.status === 429
       ? 'O serviço de IA está sobrecarregado no momento. Tente novamente em alguns instantes.'
       : (erro.msg || 'tente novamente');
@@ -240,15 +269,21 @@ async function responderStream(
         }
 
         if (!parsed) {
+          await devolverQuota(ctx.uid);
           send({ type: 'error', error: 'A resposta foi interrompida antes de terminar. Tente novamente com uma passagem menor.' });
         } else {
           const resultado = montarResultado(parsed, ctx.referencia, ctx.publicoId);
           const validacao = validarResultado(resultado.html, ctx.modoId);
-          if (!validacao.valido) send({ type: 'error', error: validacao.erro });
-          else send({ type: 'done', result: resultado });
+          if (!validacao.valido) {
+            await devolverQuota(ctx.uid);
+            send({ type: 'error', error: validacao.erro });
+          } else {
+            send({ type: 'done', result: resultado });
+          }
         }
       } catch (e) {
         console.error('Erro no stream:', e);
+        await devolverQuota(ctx.uid);
         send({ type: 'error', error: 'Erro durante a geração. Tente novamente.' });
       } finally {
         controller.close();

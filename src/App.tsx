@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SubscriptionProvider } from './contexts/SubscriptionContext';
 import { ToastProvider } from './contexts/ToastContext';
+import ErrorBoundary from './components/ErrorBoundary';
 import ProtectedRoute from './components/ProtectedRoute';
 import RequireSubscription from './components/RequireSubscription';
 import Layout from './components/Layout';
@@ -23,23 +24,30 @@ import ForgotPassword from './pages/auth/ForgotPassword';
 
 const APP_HOME = '/inicio';
 
+/**
+ * Páginas públicas (login/cadastro) NUNCA podem ficar em branco esperando a auth:
+ * se o Supabase estiver lento/fora do ar, o formulário ainda deve aparecer.
+ * Só redirecionamos quando temos certeza de que há usuário logado.
+ */
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  if (loading) return null;
+  const { user } = useAuth();
   if (user) return <Navigate to={APP_HOME} replace />;
   return <>{children}</>;
 }
 
-/** Rota "/": página pública (Landing) para visitantes; assinantes logados vão direto ao app. */
+/**
+ * Rota "/": landing pública. Renderiza SEMPRE, mesmo enquanto a auth carrega —
+ * é a página de vendas e não pode depender do Supabase para aparecer.
+ */
 function HomeRoute() {
-  const { user, loading } = useAuth();
-  if (loading) return null;
+  const { user } = useAuth();
   if (user) return <Navigate to={APP_HOME} replace />;
   return <Landing />;
 }
 
 function App() {
   return (
+    <ErrorBoundary>
     <AuthProvider>
       <SubscriptionProvider>
       <ToastProvider>
@@ -74,6 +82,7 @@ function App() {
       </ToastProvider>
       </SubscriptionProvider>
     </AuthProvider>
+    </ErrorBoundary>
   );
 }
 
