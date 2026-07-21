@@ -69,24 +69,35 @@ export default function Privacidade() {
       </p>
 
       <h2>3. Com quem compartilhamos</h2>
-      <p>Apenas com os fornecedores necessários para o serviço funcionar:</p>
+      <p>
+        Apenas com os fornecedores necessários para o serviço funcionar, e somente os
+        dados que cada um precisa para cumprir sua função:
+      </p>
       <ul>
         <li>
-          <strong>Asaas Gestão Financeira S.A.</strong> (Brasil) — processamento de
-          pagamentos. Recebe nome, e-mail, CPF/CNPJ, telefone e endereço.
+          <strong>Processador de pagamentos</strong> (instituição de pagamento
+          brasileira) — recebe nome, e-mail, CPF/CNPJ, telefone e endereço para emitir
+          e liquidar a cobrança.
         </li>
         <li>
-          <strong>Supabase</strong> — banco de dados e autenticação, onde ficam sua
-          conta e o histórico da assinatura.
+          <strong>Provedor de banco de dados e autenticação</strong> — armazena sua
+          conta, sua biblioteca de estudos e o histórico da assinatura.
         </li>
         <li>
-          <strong>Google (Gemini)</strong> — geração dos textos. Recebe o conteúdo do
-          seu pedido de estudo, sem seus dados de identificação.
+          <strong>Provedor de inteligência artificial</strong> — recebe o conteúdo do
+          seu pedido de estudo para gerar o material, sem seus dados de identificação.
         </li>
         <li>
-          <strong>Vercel</strong> — hospedagem do site.
+          <strong>Provedor de hospedagem</strong> — entrega as páginas do site ao seu
+          navegador.
         </li>
       </ul>
+      <p>
+        Você tem direito de saber quem são esses fornecedores. Basta pedir a lista
+        nominal por e-mail para{' '}
+        <a href="mailto:suporte@grupo-soares.com">suporte@grupo-soares.com</a> e nós
+        informamos.
+      </p>
       <p>
         Não vendemos, alugamos nem cedemos seus dados para publicidade ou para
         terceiros com finalidade comercial.
@@ -94,7 +105,8 @@ export default function Privacidade() {
 
       <h2>4. Transferência internacional</h2>
       <p>
-        Supabase, Google e Vercel podem processar dados em servidores fora do Brasil.
+        Os provedores de banco de dados, inteligência artificial e hospedagem podem
+        processar dados em servidores fora do Brasil.
         Essas transferências ocorrem com base em cláusulas contratuais padrão de
         proteção de dados, conforme o artigo 33 da LGPD.
       </p>
