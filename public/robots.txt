@@ -13,4 +13,4 @@ Disallow: /minha-conta
 Allow: /termos
 Allow: /privacidade
 
-Sitemap: https://bibliaexpositivapv.com.br/sitemap.xml
+Sitemap: https://www.bibliaexpositivapv.com.br/sitemap.xml

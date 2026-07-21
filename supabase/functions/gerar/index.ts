@@ -15,7 +15,10 @@ const CORS = {
 
 const MODELO_PRINCIPAL = Deno.env.get('GEMINI_MODEL') ?? 'gemini-3.5-flash';
 const MODELO_RESERVA = Deno.env.get('GEMINI_FALLBACK_MODEL') ?? 'gemini-3.1-flash-lite';
-const THINKING_BUDGET = Number(Deno.env.get('GEMINI_THINKING_BUDGET') ?? '0');
+// Raciocínio do modelo ANTES de escrever. Estava em 0 (desligado): o modelo saía
+// escrevendo direto, e em tarefas analíticas (exegese, plano de aula) isso produz
+// texto genérico. Custa alguns segundos a mais e muda o nível do material.
+const THINKING_BUDGET = Number(Deno.env.get('GEMINI_THINKING_BUDGET') ?? '3000');
 const TRANSIENTES = [429, 500, 502, 503, 504];
 // Bloqueio de acesso: exige assinatura ativa. LIGADO por padrão.
 // Para desligar (dev/testes), defina o secret ENFORCE_SUBSCRIPTION=false.
@@ -378,19 +381,28 @@ function montarResultado(
   };
 }
 
+/**
+ * Teto de tokens de saída por modo.
+ *
+ * CUIDADO AO MEXER: em português, 1 palavra gasta cerca de 2 tokens, e ainda há
+ * as tags HTML e o escape do JSON por cima. Os valores antigos ficavam ABAIXO do
+ * tamanho que o próprio prompt pedia — o texto era cortado no meio ou o modelo
+ * "economizava" para caber, e o material chegava raso ao assinante.
+ * Regra: tokens >= palavras alvo x 3.
+ */
 function limiteDeSaida(modoId: string): number {
   const limites: Record<string, number> = {
-    devocional: 1800,
-    estudo: 7000,
-    sermao: 6000,
-    exegese: 9000,
-    curso: 6000,
-    pergunte_texto: 5000,
-    pequeno_grupo: 5500,
-    discipulado: 5000,
-    apologetica: 6500,
+    devocional: 2500,    // 400 palavras
+    estudo: 14000,       // 3.000 palavras
+    sermao: 12000,       // 2.600 palavras
+    exegese: 20000,      // 4.500 palavras
+    curso: 14000,        // 3.000 palavras
+    pergunte_texto: 11000,
+    pequeno_grupo: 11000,
+    discipulado: 11000,
+    apologetica: 12000,
   };
-  return limites[modoId] ?? 6000;
+  return limites[modoId] ?? 12000;
 }
 
 function validarResultado(html: string, modoId: string): { valido: boolean; erro: string } {

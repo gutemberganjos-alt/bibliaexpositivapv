@@ -35,6 +35,20 @@ Marque as afirmações centrais com selos HTML:
 <span class="selo selo-hipotese">HIPÓTESE</span>
 <span class="selo selo-tradicao">TRADIÇÃO</span>
 
+DENSIDADE (regra de qualidade — tão obrigatória quanto as anteriores)
+O usuário PAGA por este material e vai usá-lo para ensinar pessoas. Material raso
+é falha grave. Portanto:
+- Cada seção <h4> deve trazer conteúdo substantivo, nunca uma ou duas frases soltas.
+- Escreva em parágrafos desenvolvidos, com argumento, evidência e exemplo. Listas
+  só quando a informação for genuinamente enumerável.
+- Proibido texto de enchimento: frases genéricas que serviriam para qualquer
+  passagem ("este texto é muito importante", "devemos refletir sobre isso"),
+  repetição do que já foi dito e recapitulações desnecessárias.
+- Prefira profundidade a cobertura: é melhor tratar bem as unidades decisivas do
+  que mencionar tudo superficialmente.
+- Os números de palavras indicados em cada MODO são MÍNIMOS de trabalho, não
+  tetos. Só fique abaixo se o PÚBLICO for infantil/adolescente.
+
 FORMATO DE SAÍDA (obrigatório)
 Responda APENAS com JSON válido, sem markdown ao redor:
 {
@@ -51,7 +65,9 @@ Responda APENAS com JSON válido, sem markdown ao redor:
 
 export const PUBLICOS: Record<string, string> = {
   criancas: 'PÚBLICO: CRIANÇAS. Narrativa, vocabulário concreto, sem abstrações; traduza conceitos em histórias e exemplos visuais. Inclua versículo curto para memorizar e sugestão de atividade.',
-  adolescentes: 'PÚBLICO: ADOLESCENTES. Direto e atual; frases curtas, blocos visuais, exemplos do cotidiano digital. Máximo 600 palavras.',
+  // ATENÇÃO: um teto de palavras aqui vale para TODOS os modos e esvazia até uma
+  // aula de 1h. Ajuste o vocabulário e o ritmo, não a quantidade de conteúdo.
+  adolescentes: 'PÚBLICO: ADOLESCENTES. Direto e atual; frases curtas, parágrafos enxutos, exemplos do cotidiano digital. Mantenha todas as seções e a densidade exigida pelo MODO — reduza a complexidade do vocabulário, não a quantidade de conteúdo.',
   jovens: 'PÚBLICO: JOVENS. Linguagem contemporânea, ilustrações da cultura atual, desafios práticos e pergunta para discussão em grupo.',
   igreja: 'PÚBLICO: IGREJA (congregação em geral). Acessível e pastoral; sem jargão técnico; aplicações para todas as idades.',
   professores: 'PÚBLICO: PROFESSORES DE ESCOLA DOMINICAL. Formato didático voltado a ensinar: objetivos, dinâmica, perguntas de discussão, atividade de fixação, versículo para memorizar (aula de 45–60 min).',
@@ -71,14 +87,59 @@ export const PERFIS: Record<string, string> = {
 
 export const MODOS: Record<string, string> = {
   devocional: 'MODO: DEVOCIONAL. 250–400 palavras; tom caloroso e sem jargão. Use obrigatoriamente, nesta ordem, os títulos <h4>: "Texto bíblico", "Reflexão centrada em Cristo", "Aplicação para hoje" e "Oração sugerida". Não inclua debates teológicos ou bibliografia.',
-  estudo: 'MODO: ESTUDO BÍBLICO. 1.500–2.500 palavras (reduzir para públicos infantis/juvenis). Use obrigatoriamente, nesta ordem, os títulos <h4>: "Resposta objetiva", "Texto e contexto", "Análise do texto", "Teologia bíblica e cristologia", "Aplicação", "Perguntas para reflexão", "Erros comuns" e "Referências cruzadas". Inclua 10–15 referências cruzadas.',
-  sermao: 'MODO: SERMÃO. Use obrigatoriamente, nesta ordem, os títulos <h4>: "Texto base", "Introdução", "Proposição", "Pontos do sermão", "Aplicação", "Conclusão e apelo" e "Esboço de uma página". Desenvolva de 2 a 4 pontos com uma ilustração honesta cada; baseie cada ponto no texto.',
-  exegese: 'MODO: EXEGESE. Máximo de 3.500 palavras. Para uma passagem longa, analise profundamente apenas as unidades e versículos exegeticamente decisivos; não tente comentar cada versículo de forma igual. Use obrigatoriamente, nesta ordem, os títulos <h4>: "Delimitação e tradução", "Contexto histórico e literário", "Estrutura do texto", "Análise exegética", "Idiomas originais", "Variantes textuais", "Questões interpretativas", "Teologia bíblica" e "Síntese e aplicação". Em questões debatidas, apresente posições, argumentos, pontos fortes e limites sem escolher uma como fato.',
-  curso: 'MODO: CURSO DE 1H. Use obrigatoriamente, nesta ordem, os títulos <h4>: "Objetivos de aprendizagem", "Materiais necessários", "Cronograma de 60 minutos", "O que o texto diz", "O que o texto significa", "Discussão e atividade", "Memorização e avaliação". O cronograma deve conter 5min de abertura, 10min de contexto, 15min de observação, 15min de significado, 10min de aplicação/discussão e 5min de fechamento.',
-  pergunte_texto: 'MODO: PERGUNTE AO TEXTO. Conduza um estudo indutivo sem antecipar conclusões. Use obrigatoriamente, nesta ordem, os títulos <h4>: "Leia com atenção", "O que o texto diz?", "O que significava aos primeiros leitores?", "O que revela sobre Deus?", "O que revela sobre o ser humano?", "Como se aplica hoje?" e "Próximo passo". Faça perguntas honestas e só então ofereça uma síntese breve.',
-  pequeno_grupo: 'MODO: PEQUENO GRUPO. Crie um encontro de 45–60 minutos. Use obrigatoriamente, nesta ordem, os títulos <h4>: "Objetivo do encontro", "Abertura", "Leitura e contexto", "Perguntas para conversa", "Dinâmica de fixação", "Aplicação da semana" e "Oração final". Formule perguntas abertas e seguras para participação de diferentes níveis de maturidade.',
-  discipulado: 'MODO: DISCIPULADO. Crie um encontro pessoal e progressivo. Use obrigatoriamente, nesta ordem, os títulos <h4>: "Verdade central", "Leitura bíblica", "Conversa inicial", "Compreensão", "Prática da semana", "Perguntas de acompanhamento", "Oração" e "Próximo encontro". Não substitua cuidado pastoral ou profissional em situações de risco.',
-  apologetica: 'MODO: APOLOGÉTICA. Responda com convicção, respeito e precisão; não ridicularize outras pessoas ou tradições. Use obrigatoriamente, nesta ordem, os títulos <h4>: "A pergunta", "Resposta breve", "Base bíblica", "Contexto e raciocínio", "Objeções comuns", "Como conversar com respeito" e "Conclusão". Diferencie o que é consenso cristão, interpretação e questão em debate.',
+  estudo: 'MODO: ESTUDO BÍBLICO. 2.000–3.000 palavras (simplificar o vocabulário para públicos infantis/juvenis, sem cortar seções). Use obrigatoriamente, nesta ordem, os títulos <h4>: "Resposta objetiva", "Texto e contexto", "Análise do texto", "Teologia bíblica e cristologia", "Aplicação", "Perguntas para reflexão", "Erros comuns" e "Referências cruzadas". Inclua 10–15 referências cruzadas, cada uma com uma linha explicando POR QUE ela ilumina a passagem — lista de endereços bíblicos sem explicação não serve. "Análise do texto" é a seção mais longa e deve percorrer a passagem em ordem, tratando as expressões-chave no idioma original quando isso mudar o sentido.',
+  sermao: 'MODO: SERMÃO. 1.800–2.600 palavras. O pregador deve conseguir subir ao púlpito com isto na mão. Use obrigatoriamente, nesta ordem, os títulos <h4>: "Texto base", "Introdução", "Proposição", "Pontos do sermão", "Aplicação", "Conclusão e apelo" e "Esboço de uma página". Desenvolva de 2 a 4 pontos com uma ilustração honesta cada; baseie cada ponto no texto. Cada ponto deve ter: a afirmação, a demonstração a partir do texto (com os versículos), uma ilustração concreta e verificável (nunca uma história inventada apresentada como real) e a aplicação. A "Introdução" precisa ter um gancho real e situar o texto; o "Esboço de uma página" é o resumo final para levar ao púlpito, com os tópicos e as referências.',
+  exegese: `MODO: EXEGESE. Trabalho técnico de nível de seminário: 3.000–4.500 palavras.
+Este é o modo mais exigente do produto — quem o escolhe espera análise real do texto
+original, não um comentário devocional com palavras em grego enfeitando.
+Use obrigatoriamente, nesta ordem, os títulos <h4>: "Delimitação e tradução",
+"Contexto histórico e literário", "Estrutura do texto", "Análise exegética",
+"Idiomas originais", "Variantes textuais", "Questões interpretativas",
+"Teologia bíblica" e "Síntese e aplicação".
+Exigências por seção:
+- "Delimitação e tradução": justifique onde a perícope começa e termina e ofereça
+  tradução própria e literal do texto (ou das unidades decisivas), comentando as
+  escolhas de tradução que afetam o sentido.
+- "Estrutura do texto": apresente a estrutura literária real (quiasmo, paralelismo,
+  inclusio, progressão argumentativa), com os versículos de cada bloco.
+- "Análise exegética": percorra o texto unidade por unidade, na ordem, explicando o
+  que cada uma afirma e como se liga à anterior. Em passagem longa, aprofunde as
+  unidades decisivas e trate as demais em síntese — mas nenhuma pode ficar sem
+  tratamento.
+- "Idiomas originais": analise NO MÍNIMO 5 termos ou construções relevantes. Para
+  cada um: palavra no original, transliteração, classe/forma gramatical (tempo,
+  voz, modo, caso conforme o caso), campo semântico, uso em outras passagens e por
+  que isso muda a leitura. Não liste termos triviais só para preencher.
+- "Variantes textuais": trate as variantes que existirem de fato, indicando o tipo
+  de evidência manuscrita e o impacto no sentido. Se a passagem não tiver variante
+  significativa, diga isso explicitamente em vez de inventar.
+- "Questões interpretativas": no mínimo duas questões realmente debatidas, cada uma
+  com as posições, os melhores argumentos de cada lado e os limites de cada uma.
+Em questões debatidas, nunca escolha uma como fato.`,
+  curso: `MODO: CURSO DE 1H. 2.000–3.000 palavras. Você está escrevendo o PLANO DE AULA
+COMPLETO de um professor que vai ficar 60 minutos na frente de uma turma. Ele precisa
+conseguir dar a aula lendo só isto — não um resumo do que ele deveria preparar depois.
+Use obrigatoriamente, nesta ordem, os títulos <h4>: "Objetivos de aprendizagem",
+"Materiais necessários", "Cronograma de 60 minutos", "O que o texto diz",
+"O que o texto significa", "Discussão e atividade", "Memorização e avaliação".
+Exigências por seção:
+- "Objetivos de aprendizagem": 3 a 4 objetivos observáveis (o que o aluno será capaz
+  de fazer ao final).
+- "Cronograma de 60 minutos": 5min abertura, 10min contexto, 15min observação,
+  15min significado, 10min aplicação/discussão, 5min fechamento. Para cada bloco,
+  diga o que o professor FAZ e DIZ, não apenas o tema.
+- "O que o texto diz" e "O que o texto significa": conteúdo desenvolvido, com o
+  contexto histórico, o sentido das expressões-chave e as conexões bíblicas que o
+  professor vai explicar. São as duas seções mais longas da aula.
+- "Discussão e atividade": no mínimo 6 perguntas de discussão, cada uma com a
+  resposta esperada ou os caminhos que a conversa deve tomar, mais uma atividade
+  descrita passo a passo, com tempo e material.
+- "Memorização e avaliação": versículo escolhido com justificativa e 3 perguntas de
+  verificação de aprendizagem com gabarito.`,
+  pergunte_texto: 'MODO: PERGUNTE AO TEXTO. 1.500–2.200 palavras. Conduza um estudo indutivo sem antecipar conclusões. Use obrigatoriamente, nesta ordem, os títulos <h4>: "Leia com atenção", "O que o texto diz?", "O que significava aos primeiros leitores?", "O que revela sobre Deus?", "O que revela sobre o ser humano?", "Como se aplica hoje?" e "Próximo passo". Em cada seção, faça no mínimo 4 perguntas de observação genuínas e desenvolva a resposta que o próprio texto oferece — o leitor precisa aprender o método, não só receber perguntas soltas. Só ao final ofereça a síntese.',
+  pequeno_grupo: 'MODO: PEQUENO GRUPO. 1.500–2.200 palavras. Crie um encontro de 45–60 minutos que o líder consiga conduzir lendo apenas isto. Use obrigatoriamente, nesta ordem, os títulos <h4>: "Objetivo do encontro", "Abertura", "Leitura e contexto", "Perguntas para conversa", "Dinâmica de fixação", "Aplicação da semana" e "Oração final". Em "Leitura e contexto", explique o pano de fundo com profundidade suficiente para o líder ensinar. Em "Perguntas para conversa", traga no mínimo 7 perguntas abertas, cada uma com uma nota ao líder sobre onde a conversa costuma travar ou desviar. A dinâmica deve ter passo a passo, tempo e material.',
+  discipulado: 'MODO: DISCIPULADO. 1.500–2.200 palavras. Crie um encontro pessoal e progressivo, pronto para ser conduzido. Use obrigatoriamente, nesta ordem, os títulos <h4>: "Verdade central", "Leitura bíblica", "Conversa inicial", "Compreensão", "Prática da semana", "Perguntas de acompanhamento", "Oração" e "Próximo encontro". Desenvolva a "Compreensão" com o conteúdo bíblico que o discipulador vai ensinar, não apenas com tópicos. "Conversa inicial" e "Perguntas de acompanhamento" devem ter no mínimo 5 perguntas cada, com o propósito de cada uma. Não substitua cuidado pastoral ou profissional em situações de risco.',
+  apologetica: 'MODO: APOLOGÉTICA. 1.800–2.600 palavras. Responda com convicção, respeito e precisão; não ridicularize outras pessoas ou tradições. Use obrigatoriamente, nesta ordem, os títulos <h4>: "A pergunta", "Resposta breve", "Base bíblica", "Contexto e raciocínio", "Objeções comuns", "Como conversar com respeito" e "Conclusão". Em "Objeções comuns", trate no mínimo 3 objeções na sua versão mais forte — não em caricatura — e responda cada uma com argumento e evidência. "Contexto e raciocínio" é a seção mais longa e deve construir o argumento passo a passo. Diferencie o que é consenso cristão, interpretação e questão em debate.',
 };
 
 /** Títulos que tornam uma entrega verificável antes de chegar ao usuário. */
