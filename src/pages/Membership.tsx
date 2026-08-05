@@ -95,13 +95,6 @@ export default function Membership() {
   const [erroTel, setErroTel] = useState('');
   const [erroEnd, setErroEnd] = useState('');
 
-  function escolherPlano(plan: PlanId) {
-    setPlanoEscolhido(plan);
-    setErroDoc('');
-    setErroTel('');
-    setErroEnd('');
-  }
-
   async function confirmarAssinatura() {
     if (!planoEscolhido) return;
     let invalido = false;
