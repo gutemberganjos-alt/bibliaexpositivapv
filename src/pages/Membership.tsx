@@ -382,14 +382,16 @@ export default function Membership() {
           <p>Seu acervo, seus estudos e seus kits em uma experiência única.</p>
           <p className="text-2xl text-[var(--cor-dourado)] font-['Playfair_Display'] mt-4">{PLANOS.individual.precoLabel}<span className="text-sm text-[var(--cor-texto-dim)] font-sans"> {PLANOS.individual.ciclo}</span></p>
           <p className="text-xs text-[var(--cor-texto-dim)] mt-1">ou {PLANOS.individual.precos.ANUAL.precoLabel} por ano — {PLANOS.individual.precos.ANUAL.economiaLabel?.toLowerCase()}</p>
-          <button
-            onClick={() => escolherPlano('individual')}
-            disabled={loadingPlan !== null || active}
-            className="btn-primary w-full mt-5 flex items-center justify-center gap-2 disabled:opacity-60"
-          >
-            {loadingPlan === 'individual' && <Loader2 size={16} className="animate-spin" />}
-            {active ? 'Plano ativo' : 'Assinar plano individual'}
-          </button>
+          {active ? (
+            <button disabled className="btn-primary w-full mt-5 disabled:opacity-60">Plano ativo</button>
+          ) : (
+            <a
+              href="https://www.logosacademyonline.com/produto/biblia-expositiva-pv-palavra-viva"
+              className="btn-primary w-full mt-5 flex items-center justify-center gap-2"
+            >
+              Assinar pela Logos Academy
+            </a>
+          )}
         </article>
         <article className="plan-card plan-card-featured card p-6">
           <Building2 size={23} className="text-[var(--cor-dourado)] mb-4" />
@@ -398,18 +400,13 @@ export default function Membership() {
           <p>Uma base para professores, líderes e ministérios estudarem com unidade.</p>
           <p className="text-2xl text-[var(--cor-dourado)] font-['Playfair_Display'] mt-4">{PLANOS.igreja.precoLabel}<span className="text-sm text-[var(--cor-texto-dim)] font-sans"> {PLANOS.igreja.ciclo}</span></p>
           <p className="text-xs text-[var(--cor-texto-dim)] mt-1">ou {PLANOS.igreja.precos.ANUAL.precoLabel} por ano — {PLANOS.igreja.precos.ANUAL.economiaLabel?.toLowerCase()}</p>
-          <button
-            onClick={() => escolherPlano('igreja')}
-            disabled={loadingPlan !== null || active}
-            className="btn-primary w-full mt-5 flex items-center justify-center gap-2 disabled:opacity-60"
-          >
-            {loadingPlan === 'igreja' && <Loader2 size={16} className="animate-spin" />}
-            {active ? 'Plano ativo' : 'Assinar plano igreja'}
+          <button disabled className="btn-primary w-full mt-5 disabled:opacity-60">
+            {active ? 'Plano ativo' : 'Em breve — fale com o suporte'}
           </button>
         </article>
       </section>
 
-      <p className="membership-trust"><ShieldCheck size={15} /> Cobrança segura via Asaas (PIX e cartão de crédito). Reembolso integral em até 7 dias. Acesso liberado após a confirmação do pagamento.</p>
+      <p className="membership-trust"><ShieldCheck size={15} /> Assinatura processada pela Logos Academy (PIX e cartão). Reembolso conforme a política da Logos. Acesso liberado em poucos minutos após a confirmação do pagamento.</p>
     </div>
   );
 }
