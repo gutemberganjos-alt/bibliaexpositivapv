@@ -219,6 +219,15 @@ export default function Landing() {
 
       <footer className="landing-footer">
         <p>© {new Date().getFullYear()} Bíblia Expositiva. Todos os direitos reservados.</p>
+        {/* Biblioteca pública: páginas ESTÁTICAS geradas em seo/, fora do React Router.
+            Precisam de <a> comum — <Link> tentaria rota client-side e cairia no
+            fallback do SPA, que não tem rota para /estudo. */}
+        <nav className="flex gap-4 flex-wrap justify-center">
+          <a href="/estudo/">Estudos por capítulo</a>
+          <a href="/tema/">Estudos por tema</a>
+          <a href="/sermao/">Esboços de sermão</a>
+          <a href="/usar-ia-para-pregar">IA e ministério</a>
+        </nav>
         <nav className="flex gap-4 flex-wrap justify-center">
           <Link to="/login">Entrar</Link>
           <Link to="/cadastro">Criar conta</Link>

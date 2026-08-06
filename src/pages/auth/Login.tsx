@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import GoogleIcon from '../../components/GoogleIcon';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -9,7 +10,28 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const navigate = useNavigate();
+
+  const handleGoogle = async () => {
+    setError('');
+    setGoogleLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}/inicio` },
+      });
+      // Em caso de sucesso o navegador é redirecionado ao Google — só chegamos
+      // aqui de novo se algo falhar antes disso.
+      if (error) {
+        setError(error.message);
+        setGoogleLoading(false);
+      }
+    } catch {
+      setError('Não foi possível iniciar o login com Google. Tente novamente.');
+      setGoogleLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,7 +141,17 @@ export default function Login() {
           <div className="flex-grow border-t border-[var(--cor-borda)]"></div>
         </div>
 
-        <div className="text-center">
+        <button
+          type="button"
+          onClick={handleGoogle}
+          disabled={googleLoading}
+          className="btn-secondary w-full flex items-center justify-center gap-2.5 disabled:opacity-60"
+        >
+          <GoogleIcon size={18} />
+          {googleLoading ? 'Redirecionando...' : 'Continuar com Google'}
+        </button>
+
+        <div className="text-center mt-6">
           <Link to="/cadastro" className="text-[var(--cor-dourado)] hover:text-[var(--cor-dourado-claro)] text-sm transition-colors">
             Ainda não tem acesso? Criar conta
           </Link>

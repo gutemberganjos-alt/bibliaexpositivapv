@@ -8,7 +8,7 @@
 //  - Assets versionados (/assets, /icons): cache-first (o nome tem hash, é seguro).
 //  - activate: apaga caches de versões anteriores e assume o controle na hora.
 
-const VERSION = 'v3';
+const VERSION = 'v5';
 const CACHE_NAME = `biblia-pv-${VERSION}`;
 const OFFLINE_URL = '/';
 
@@ -47,8 +47,14 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(req)
         .then((resp) => {
-          const copia = resp.clone();
-          caches.open(CACHE_NAME).then((c) => c.put(OFFLINE_URL, copia)).catch(() => {});
+          // BUG ANTIGO: guardava QUALQUER navegação sob OFFLINE_URL. Depois que
+          // passaram a existir páginas públicas estáticas (/estudo/..., /tema/...),
+          // visitar uma delas fazia o fallback offline do app virar aquela página.
+          // Só o "/" alimenta o fallback.
+          if (url.pathname === '/' || url.pathname === '/index.html') {
+            const copia = resp.clone();
+            caches.open(CACHE_NAME).then((c) => c.put(OFFLINE_URL, copia)).catch(() => {});
+          }
           return resp;
         })
         .catch(() => caches.match(OFFLINE_URL)),

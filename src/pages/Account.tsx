@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { LogOut, User, Mail, Shield, CreditCard, ChevronRight, GraduationCap, XCircle, Loader2 } from 'lucide-react';
+import { LogOut, User, Mail, Shield, CreditCard, ChevronRight, GraduationCap, XCircle, Loader2, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
+import { useAdmin } from '../contexts/AdminContext';
 import { cancelSubscription } from '../lib/subscription';
 
 const TIER_LABEL: Record<string, string> = {
@@ -23,6 +24,7 @@ const STATUS_LABEL: Record<string, string> = {
 export default function Account() {
   const { user, signOut } = useAuth();
   const { subscription, active, refresh } = useSubscription();
+  const { isAdmin } = useAdmin();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [busy, setBusy] = useState<'cancel' | null>(null);
@@ -117,6 +119,19 @@ export default function Account() {
           </div>
           <ChevronRight size={18} className="text-[var(--cor-dourado-dim)]" />
         </button>
+
+        {isAdmin && (
+          <button
+            onClick={() => navigate('/admin/usuarios')}
+            className="w-full card p-4 flex items-center justify-between hover:border-[var(--cor-dourado)] group transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <ShieldCheck size={20} className="text-[var(--cor-dourado-dim)] group-hover:text-[var(--cor-dourado)] transition-colors" />
+              <span className="text-[var(--cor-pergaminho)]">Painel Admin</span>
+            </div>
+            <ChevronRight size={18} className="text-[var(--cor-dourado-dim)]" />
+          </button>
+        )}
       </div>
 
       <button

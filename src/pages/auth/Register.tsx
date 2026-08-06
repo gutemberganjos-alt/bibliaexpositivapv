@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, User, KeyRound, MailCheck } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import GoogleIcon from '../../components/GoogleIcon';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -11,8 +12,27 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
+
+  const handleGoogle = async () => {
+    setError('');
+    setGoogleLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}/inicio` },
+      });
+      if (error) {
+        setError(error.message);
+        setGoogleLoading(false);
+      }
+    } catch {
+      setError('Não foi possível iniciar o login com Google. Tente novamente.');
+      setGoogleLoading(false);
+    }
+  };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -170,11 +190,29 @@ export default function Register() {
         )}
 
         {!success && (
-        <div className="text-center mt-8">
-          <Link to="/login" className="text-[var(--cor-dourado)] hover:text-[var(--cor-dourado-claro)] text-sm transition-colors">
-            Já tenho conta. Fazer login
-          </Link>
-        </div>
+          <>
+            <div className="relative flex items-center py-6">
+              <div className="flex-grow border-t border-[var(--cor-borda)]"></div>
+              <span className="flex-shrink-0 mx-4 text-[var(--cor-texto-dim)] text-sm font-['Manrope'] lowercase">ou</span>
+              <div className="flex-grow border-t border-[var(--cor-borda)]"></div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleGoogle}
+              disabled={googleLoading}
+              className="btn-secondary w-full flex items-center justify-center gap-2.5 disabled:opacity-60"
+            >
+              <GoogleIcon size={18} />
+              {googleLoading ? 'Redirecionando...' : 'Continuar com Google'}
+            </button>
+
+            <div className="text-center mt-6">
+              <Link to="/login" className="text-[var(--cor-dourado)] hover:text-[var(--cor-dourado-claro)] text-sm transition-colors">
+                Já tenho conta. Fazer login
+              </Link>
+            </div>
+          </>
         )}
       </div>
     </div>

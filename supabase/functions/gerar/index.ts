@@ -9,9 +9,26 @@ import { montarPrompt, MODOS, PUBLICOS, SECOES_OBRIGATORIAS } from './prompts.ts
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-seo-token',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
+
+// Robô de conteúdo público (SEO). O pipeline em `seo/` gera milhares de páginas
+// indexáveis e NÃO pertence a nenhum assinante — não faz sentido consumir a franquia
+// mensal de ninguém nem exigir sessão de usuário.
+// Segurança: só libera se o secret SEO_TOKEN existir, tiver 32+ caracteres e o header
+// bater exatamente. Sem o secret configurado, este caminho simplesmente não existe.
+const SEO_TOKEN = Deno.env.get('SEO_TOKEN') ?? '';
+
+function ehRoboSeo(req: Request): boolean {
+  if (SEO_TOKEN.length < 32) return false;
+  const enviado = req.headers.get('x-seo-token') ?? '';
+  if (enviado.length !== SEO_TOKEN.length) return false;
+  // Comparação de tempo constante: evita descobrir o token byte a byte pelo tempo de resposta.
+  let diff = 0;
+  for (let i = 0; i < SEO_TOKEN.length; i++) diff |= SEO_TOKEN.charCodeAt(i) ^ enviado.charCodeAt(i);
+  return diff === 0;
+}
 
 const MODELO_PRINCIPAL = Deno.env.get('GEMINI_MODEL') ?? 'gemini-3.5-flash';
 const MODELO_RESERVA = Deno.env.get('GEMINI_FALLBACK_MODEL') ?? 'gemini-3.1-flash-lite';
@@ -44,10 +61,11 @@ async function devolverQuota(uid: string | null): Promise<void> {
       headers: { 'content-type': 'application/json', apikey: serviceKey, authorization: `Bearer ${serviceKey}` },
       body: JSON.stringify({ p_user_id: uid }),
     });
-  } catch (_e) { /* devolução é best-effort */ }
+  } catch { /* devolução é best-effort */ }
 }
 
 async function verificarAssinaturaEQuota(req: Request): Promise<{ ok: boolean; status?: number; error?: string; uid?: string }> {
+  if (ehRoboSeo(req)) return { ok: true };
   if (!ENFORCE_SUBSCRIPTION) return { ok: true };
   try {
     const url = Deno.env.get('SUPABASE_URL');
@@ -84,7 +102,7 @@ async function verificarAssinaturaEQuota(req: Request): Promise<{ ok: boolean; s
       };
     }
     return { ok: true, uid };
-  } catch (_e) {
+  } catch {
     return { ok: false, status: 403, error: 'Falha ao validar a assinatura.' };
   }
 }

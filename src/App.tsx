@@ -1,10 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SubscriptionProvider } from './contexts/SubscriptionContext';
+import { AdminProvider } from './contexts/AdminContext';
 import { ToastProvider } from './contexts/ToastContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import ProtectedRoute from './components/ProtectedRoute';
 import RequireSubscription from './components/RequireSubscription';
+import AdminRoute from './components/AdminRoute';
 import Layout from './components/Layout';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
@@ -23,6 +25,10 @@ import Privacidade from './pages/Privacidade';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
+
+// Admin
+import AdminUsuarios from './pages/admin/Usuarios';
 
 const APP_HOME = '/inicio';
 
@@ -52,6 +58,7 @@ function App() {
     <ErrorBoundary>
     <AuthProvider>
       <SubscriptionProvider>
+      <AdminProvider>
       <ToastProvider>
         <BrowserRouter>
           <Routes>
@@ -66,6 +73,11 @@ function App() {
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
             <Route path="/cadastro" element={<PublicRoute><Register /></PublicRoute>} />
             <Route path="/recuperar-senha" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+
+            {/* Link do e-mail de recuperação: NÃO pode ficar dentro de PublicRoute.
+                O Supabase cria uma sessão temporária ao abrir o link, e PublicRoute
+                mandaria essa sessão direto para /inicio antes do usuário trocar a senha. */}
+            <Route path="/resetar-senha" element={<ResetPassword />} />
 
             {/* App autenticado: caminhos absolutos, não aninhados sob "/". */}
             <Route element={<ProtectedRoute />}>
@@ -85,11 +97,18 @@ function App() {
                   <Route path="/interpretacao" element={<Interpretacao />} />
                 </Route>
                 <Route path="/minha-conta" element={<Account />} />
+
+                {/* Painel administrativo — checagem dupla: RLS no banco (garantia real)
+                    + AdminRoute no cliente (evita mostrar a tela à toa). */}
+                <Route element={<AdminRoute />}>
+                  <Route path="/admin/usuarios" element={<AdminUsuarios />} />
+                </Route>
               </Route>
             </Route>
           </Routes>
         </BrowserRouter>
       </ToastProvider>
+      </AdminProvider>
       </SubscriptionProvider>
     </AuthProvider>
     </ErrorBoundary>

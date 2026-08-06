@@ -5,9 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node seo/5-estatico.mjs",
+    "build:app": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "seo:configurar": "bash seo/configurar.sh",
+    "seo:minerar": "node seo/1-minerar.mjs",
+    "seo:fila": "node seo/2-fila.mjs",
+    "seo:gerar": "node seo/3-gerar.mjs",
+    "seo:publicar": "node seo/4-publicar.mjs",
+    "seo:estatico": "node seo/5-estatico.mjs"
   },
   "dependencies": {
     "@stripe/stripe-js": "^9.8.0",

@@ -20,6 +20,9 @@ dist-ssr
 # Artefato interno do Cowork (painel administrativo), não faz parte do app publicado
 outputs/
 
+# Dados intermediários do pipeline de SEO (regeneráveis; a verdade fica no Supabase)
+seo/data/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
