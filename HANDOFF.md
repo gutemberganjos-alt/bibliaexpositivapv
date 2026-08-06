@@ -191,6 +191,30 @@ primeira abertura, uma única vez.
 
 ---
 
+## Correções pós-deploy (06/08/2026, tarde)
+
+- **404 em `/resetar-senha` e no retorno do login Google** — causa: `vercel.json`
+  tinha `"rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]`
+  junto com `"cleanUrls": true`. Essa combinação quebra a resolução do destino
+  na Vercel (ele existe se acessado direto, mas o rewrite não resolve) e
+  qualquer rota que não seja `/` dá 404 real da Vercel (`x-vercel-error:
+  NOT_FOUND`, `content-type: text/plain`) — nem chega a carregar o React.
+  **Correção**: trocar o destino para `"/"` (commit `6b9fbaa`). Confirmado via
+  `web_fetch_vercel_url` (ferramenta que lê status/headers reais, diferente do
+  WebFetch normal que não mostra bem 404 da Vercel).
+- **Logo/favicon errados** — o ícone com texto "BE PV" estava incorreto. Logo
+  certo: chama dourada sobre livro aberto, sem texto, fundo azul-marinho. Como
+  a imagem enviada pelo usuário não ficou disponível como arquivo (só teria
+  chegado inline na conversa), recriei como SVG próprio (`public/favicon.svg`)
+  fiel à composição e gerei os PNGs (32/180/192/512) a partir dele (commit
+  `8ac219c`). Se um dia o usuário mandar o arquivo original em alta resolução,
+  vale substituir pelo original.
+- **E-mail de reset de senha sem cara do app** — o Supabase manda o template
+  padrão em inglês, remetente `noreply@mail.app.supabase.io`. Não dá para
+  editar via API/MCP, só pelo Dashboard (Authentication → Email Templates).
+  Guia com o HTML pronto para colar: `SETUP-EMAIL.md`. Trocar o remetente
+  exigiria SMTP próprio (fora de escopo por agora).
+
 ## Lições desta rodada (evite repetir)
 
 - **Pergunte à API, não adivinhe.** Três erros seguidos do Asaas foram resolvidos em
