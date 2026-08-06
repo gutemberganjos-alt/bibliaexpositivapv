@@ -215,6 +215,25 @@ primeira abertura, uma única vez.
   Guia com o HTML pronto para colar: `SETUP-EMAIL.md`. Trocar o remetente
   exigiria SMTP próprio (fora de escopo por agora).
 
+## Painel admin: prorrogar, dar bônus e cancelar assinaturas (06/08/2026, noite)
+
+No `/admin/usuarios`, cada usuário agora tem dois botões:
+
+- **Prorrogar / bônus** — escolhe plano (Individual/Igreja) e dias (atalhos
+  7/30/90/365 ou número livre). Chama a RPC `admin_grant_access` (SECURITY
+  DEFINER, só roda se `is_admin()`), que soma os dias a partir de hoje ou do
+  fim do período atual (o que for maior) e reativa a assinatura. Não mexe no
+  Asaas — é só um ajuste no nosso banco, por isso é seguro pra cortesia/bônus
+  e pra segurar um usuário que teve algum problema.
+- **Cancelar assinatura** — chama a edge function `admin-cancel`. Se a
+  assinatura for de verdade (tem `asaas_subscription_id`), também cancela lá
+  para parar a cobrança recorrente. Nunca reembolsa sozinho — isso é decisão
+  manual. Tem checkbox "encerrar agora" (senão mantém acesso até o fim do
+  período já pago, igual ao autoatendimento).
+
+Toda ação fica em `audit_log` (`action`, `metadata` com `target_user_id` e
+`motivo`), visível para admins via a policy `audit_select_admin`.
+
 ## Lições desta rodada (evite repetir)
 
 - **Pergunte à API, não adivinhe.** Três erros seguidos do Asaas foram resolvidos em
