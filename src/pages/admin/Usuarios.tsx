@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Loader2, Search, ShieldCheck, Users, UserPlus, CreditCard } from 'lucide-react';
-import { fetchAdminUsers } from '../../lib/admin';
-import type { AdminUserRow } from '../../lib/admin';
+import { ArrowLeft, Loader2, Search, ShieldCheck, Users, UserPlus, CreditCard, Gift, XCircle, X } from 'lucide-react';
+import { fetchAdminUsers, adminGrantAccess, adminCancelSubscription } from '../../lib/admin';
+import type { AdminUserRow, AdminTier } from '../../lib/admin';
 import { useToast } from '../../contexts/ToastContext';
 
 const TIER_LABEL: Record<string, string> = {
@@ -52,11 +52,21 @@ function calcularKpis(usuarios: AdminUserRow[]) {
   return { total, ativos, novos, mrr };
 }
 
+type Acao = { tipo: 'conceder' | 'cancelar'; usuario: AdminUserRow };
+
 export default function AdminUsuarios() {
   const { showToast } = useToast();
   const [usuarios, setUsuarios] = useState<AdminUserRow[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [busca, setBusca] = useState('');
+  const [acao, setAcao] = useState<Acao | null>(null);
+
+  function recarregar() {
+    fetchAdminUsers()
+      .then((lista) => setUsuarios(lista))
+      .catch((e) => showToast((e as Error).message || 'Não foi possível carregar os usuários.', 'error'))
+      .finally(() => setCarregando(false));
+  }
 
   useEffect(() => {
     let ativo = true;
@@ -156,12 +166,190 @@ export default function AdminUsuarios() {
                     {u.usage && <span>{u.usage.lessons_this_month} estudo(s) este mês</span>}
                     <span className="text-[var(--cor-texto-dim)]">desde {dateLabel(u.created_at)}</span>
                   </div>
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      onClick={() => setAcao({ tipo: 'conceder', usuario: u })}
+                      className="flex-1 flex items-center justify-center gap-1.5 text-xs py-2 rounded-md border border-[var(--cor-dourado)]/40 text-[var(--cor-dourado)] hover:bg-[var(--cor-dourado-bg)] transition-colors"
+                    >
+                      <Gift size={13} /> Prorrogar / bônus
+                    </button>
+                    {u.subscription && (
+                      <button
+                        onClick={() => setAcao({ tipo: 'cancelar', usuario: u })}
+                        className="flex-1 flex items-center justify-center gap-1.5 text-xs py-2 rounded-md border border-[#E05555]/40 text-[#E05555] hover:bg-[rgba(224,85,85,0.08)] transition-colors"
+                      >
+                        <XCircle size={13} /> Cancelar assinatura
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
           </div>
         </>
       )}
+
+      {acao && (
+        <ModalAcao
+          acao={acao}
+          onFechar={() => setAcao(null)}
+          onConcluido={() => { setAcao(null); recarregar(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+const DIAS_RAPIDOS = [7, 30, 90, 365];
+
+function ModalAcao({ acao, onFechar, onConcluido }: {
+  acao: Acao;
+  onFechar: () => void;
+  onConcluido: () => void;
+}) {
+  const { showToast } = useToast();
+  const { usuario, tipo } = acao;
+  const [salvando, setSalvando] = useState(false);
+  const [motivo, setMotivo] = useState('');
+
+  // Estado só do formulário de "conceder"
+  const [tier, setTier] = useState<AdminTier>(
+    usuario.subscription_tier === 'church' ? 'church' : 'premium',
+  );
+  const [dias, setDias] = useState(30);
+
+  // Estado só do formulário de "cancelar"
+  const [imediato, setImediato] = useState(false);
+
+  async function confirmar() {
+    setSalvando(true);
+    try {
+      if (tipo === 'conceder') {
+        await adminGrantAccess(usuario.id, tier, dias, motivo || undefined);
+        showToast(`Acesso liberado até ${dateLabel(new Date(Date.now() + dias * 86400000).toISOString())}.`, 'success');
+      } else {
+        const r = await adminCancelSubscription(usuario.id, imediato, motivo || undefined);
+        showToast(r.message, 'success');
+      }
+      onConcluido();
+    } catch (e) {
+      showToast((e as Error).message || 'Não foi possível concluir a ação.', 'error');
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60" onClick={onFechar}>
+      <div className="card w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <p className="eyebrow">{tipo === 'conceder' ? 'PRORROGAR / BÔNUS' : 'CANCELAR ASSINATURA'}</p>
+            <h2 className="text-lg text-[var(--cor-dourado-claro)] mt-1">{usuario.full_name || usuario.email}</h2>
+          </div>
+          <button onClick={onFechar} className="text-[var(--cor-texto-dim)] hover:text-[var(--cor-texto-medio)]">
+            <X size={18} />
+          </button>
+        </div>
+
+        {tipo === 'conceder' ? (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs tracking-wider text-[var(--cor-texto-medio)] mb-2 font-['Manrope']">Plano</label>
+              <div className="flex gap-2">
+                {(['premium', 'church'] as AdminTier[]).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setTier(t)}
+                    className={`flex-1 py-2 rounded-md text-sm border transition-colors ${
+                      tier === t ? 'border-[var(--cor-dourado)] text-[var(--cor-dourado)] bg-[var(--cor-dourado-bg)]' : 'border-[var(--cor-borda)] text-[var(--cor-texto-medio)]'
+                    }`}
+                  >
+                    {t === 'premium' ? 'Individual' : 'Igreja'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs tracking-wider text-[var(--cor-texto-medio)] mb-2 font-['Manrope']">Dias de acesso</label>
+              <div className="flex gap-2 flex-wrap mb-2">
+                {DIAS_RAPIDOS.map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => setDias(d)}
+                    className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
+                      dias === d ? 'border-[var(--cor-dourado)] text-[var(--cor-dourado)] bg-[var(--cor-dourado-bg)]' : 'border-[var(--cor-borda)] text-[var(--cor-texto-medio)]'
+                    }`}
+                  >
+                    {d} dias
+                  </button>
+                ))}
+              </div>
+              <input
+                type="number"
+                min={1}
+                value={dias}
+                onChange={(e) => setDias(Math.max(1, Number(e.target.value) || 1))}
+                className="input-base w-full py-2 text-sm"
+              />
+              <p className="text-xs text-[var(--cor-texto-dim)] mt-1">
+                Soma a partir de hoje ou do fim do período atual, o que for maior.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs tracking-wider text-[var(--cor-texto-medio)] mb-2 font-['Manrope']">Motivo (opcional, fica no histórico)</label>
+              <input
+                value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+                placeholder="Ex.: cortesia, compensação por bug…"
+                className="input-base w-full py-2 text-sm"
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <label className="flex items-start gap-2.5 text-sm text-[var(--cor-texto-medio)] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={imediato}
+                onChange={(e) => setImediato(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                Encerrar o acesso <strong className="text-[var(--cor-pergaminho)]">agora</strong> (padrão: mantém até o fim do período já pago)
+              </span>
+            </label>
+
+            <div className="rounded-md p-3 border border-[var(--cor-borda)] bg-[var(--cor-fundo-input)] text-xs text-[var(--cor-texto-dim)] leading-relaxed">
+              Se for uma assinatura paga de verdade, isso também para a cobrança recorrente no Asaas. Não gera reembolso automático.
+            </div>
+
+            <div>
+              <label className="block text-xs tracking-wider text-[var(--cor-texto-medio)] mb-2 font-['Manrope']">Motivo (opcional, fica no histórico)</label>
+              <input
+                value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+                placeholder="Ex.: pedido do usuário, abuso, chargeback…"
+                className="input-base w-full py-2 text-sm"
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-2 mt-6">
+          <button onClick={onFechar} className="btn-secondary flex-1">Cancelar</button>
+          <button
+            onClick={confirmar}
+            disabled={salvando}
+            className={`flex-1 flex items-center justify-center gap-2 disabled:opacity-60 ${tipo === 'cancelar' ? 'btn-destructive' : 'btn-primary'}`}
+          >
+            {salvando ? <Loader2 size={16} className="animate-spin" /> : null}
+            {tipo === 'conceder' ? 'Confirmar' : 'Confirmar cancelamento'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

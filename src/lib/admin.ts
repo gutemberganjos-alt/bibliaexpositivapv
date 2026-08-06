@@ -88,3 +88,54 @@ export async function fetchAdminUsers(): Promise<AdminUserRow[]> {
     usage: usagePorUsuario.get(p.id) ?? null,
   }));
 }
+
+export type AdminTier = 'premium' | 'church';
+
+/**
+ * Concede ou prorroga acesso de um usuário (bônus, cortesia, extensão manual).
+ * Não mexe no Asaas — é só um ajuste no nosso banco (RPC admin_grant_access,
+ * SECURITY DEFINER, só funciona se o usuário logado for admin).
+ */
+export async function adminGrantAccess(
+  targetUserId: string,
+  tier: AdminTier,
+  dias: number,
+  motivo?: string,
+): Promise<void> {
+  const { error } = await supabase.rpc('admin_grant_access', {
+    p_user_id: targetUserId,
+    p_tier: tier,
+    p_dias: dias,
+    p_motivo: motivo ?? null,
+  });
+  if (error) throw new Error(error.message);
+}
+
+export interface AdminCancelResult { canceled: boolean; message: string }
+
+/**
+ * Cancela a assinatura de outro usuário. Se ela for de verdade (tem
+ * asaas_subscription_id), também para a cobrança recorrente no Asaas — nunca
+ * reembolsa sozinho. `imediato` decide se o acesso cai na hora ou só no fim do
+ * período já pago.
+ */
+export async function adminCancelSubscription(
+  targetUserId: string,
+  imediato: boolean,
+  motivo?: string,
+): Promise<AdminCancelResult> {
+  const { data, error } = await supabase.functions.invoke<AdminCancelResult & { error?: string }>(
+    'admin-cancel',
+    { body: { target_user_id: targetUserId, imediato, motivo: motivo ?? null } },
+  );
+  if (error) {
+    let detalhe = '';
+    try {
+      const ctx = (error as { context?: unknown }).context;
+      if (ctx instanceof Response) detalhe = (await ctx.json())?.error ?? '';
+    } catch { /* corpo não-JSON */ }
+    throw new Error(detalhe || error.message);
+  }
+  if (data?.error) throw new Error(data.error);
+  return data as AdminCancelResult;
+}
