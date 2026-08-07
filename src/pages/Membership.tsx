@@ -8,6 +8,7 @@ import {
   telefoneValido, formatarTelefone, cepValido, formatarCep,
   type PlanId, type FormaPagamento, type Ciclo, type PixCobranca,
 } from '../lib/subscription';
+import { trackInitiateCheckout } from '../lib/pixel';
 
 const BENEFITS = [
   'Estudos, sermões e exegeses estruturados',
@@ -380,6 +381,7 @@ export default function Membership() {
           ) : (
             <a
               href="https://www.logosacademyonline.com/produto/biblia-expositiva-pv-palavra-viva"
+              onClick={() => trackInitiateCheckout({ value: PLANOS.individual.precos.MENSAL.valor, plano: 'Individual', ciclo: 'MENSAL' })}
               className="btn-primary w-full mt-5 flex items-center justify-center gap-2"
             >
               Assinar pela Logos Academy

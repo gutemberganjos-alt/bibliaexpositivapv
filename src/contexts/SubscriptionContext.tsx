@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 import type { ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { fetchSubscription, isActive, type Subscription } from '../lib/subscription';
+import { trackOnce, trackPurchase } from '../lib/pixel';
 
 interface SubscriptionContextType {
   subscription: Subscription | null;
@@ -44,6 +45,18 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     void load();
     return () => { cancelled = true; };
   }, [authLoading, user]);
+
+  // Dispara o evento de compra do Pixel na primeira vez que detectamos essa
+  // assinatura ativa — o pagamento acontece na Logos Academy (fora do nosso
+  // domínio), então este é o ponto mais confiável que temos: o retorno ao app
+  // (via magic link ou login normal) já com o acesso liberado pelo webhook.
+  useEffect(() => {
+    if (!subscription?.id || !isActive(subscription)) return;
+    trackOnce(`fb_purchase_${subscription.id}`, () => trackPurchase({
+      value: subscription.value ?? 0,
+      plano: subscription.tier,
+    }));
+  }, [subscription]);
 
   return (
     <SubscriptionContext.Provider

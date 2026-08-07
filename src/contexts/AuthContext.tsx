@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { trackCompleteRegistration, trackOnce } from '../lib/pixel';
 
 interface AuthContextType {
   session: Session | null;
@@ -35,10 +36,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Cadastro novo (e-mail confirmado agora ou primeiro login Google): o
+        // Supabase não manda um evento "SIGNED_UP" separado, então detectamos
+        // pela distância entre created_at e last_sign_in_at. trackOnce evita
+        // disparar de novo em toda sessão restaurada.
+        if (event === 'SIGNED_IN' && session?.user) {
+          const u = session.user;
+          const criado = u.created_at ? new Date(u.created_at).getTime() : null;
+          const logado = u.last_sign_in_at ? new Date(u.last_sign_in_at).getTime() : null;
+          const cadastroNovo = criado !== null && logado !== null && Math.abs(logado - criado) < 15000;
+          if (cadastroNovo) {
+            trackOnce(`fb_cr_${u.id}`, trackCompleteRegistration);
+          }
+        }
       }
     );
 
