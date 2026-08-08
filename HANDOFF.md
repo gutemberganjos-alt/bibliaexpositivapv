@@ -175,6 +175,12 @@ primeira abertura, uma única vez.
 
 ## O que falta (em ordem de impacto)
 
+0. **Integração Logos Academy — pendente, adiada a pedido do dono (07/08/2026).**
+   Leia `SETUP-LOGOS.md`: falha de segurança real foi encontrada e corrigida
+   (funções `logos-webhook`/`logos-sso` liberavam acesso sem checar token
+   quando o secret não existia). Falta configurar `LOGOS_WEBHOOK_TOKEN` nos
+   dois lados (Supabase deste projeto + painel da Logos) para a integração
+   voltar a funcionar. Até lá, as funções ficam bloqueando tudo — seguro.
 1. **Asaas de produção** — único bloqueador de venda
 2. **Publicar e testar a função `gerar`** — a correção de qualidade está no código, não no ar
 3. **Testar biblioteca entre aparelhos** e o PIX com QR dentro do app

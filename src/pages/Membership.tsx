@@ -379,13 +379,15 @@ export default function Membership() {
           {active ? (
             <button disabled className="btn-primary w-full mt-5 disabled:opacity-60">Plano ativo</button>
           ) : (
-            <a
-              href="https://www.logosacademyonline.com/produto/biblia-expositiva-pv-palavra-viva"
-              onClick={() => trackInitiateCheckout({ value: PLANOS.individual.precos.MENSAL.valor, plano: 'Individual', ciclo: 'MENSAL' })}
+            <button
+              onClick={() => {
+                trackInitiateCheckout({ value: PLANOS.individual.precos.MENSAL.valor, plano: 'Individual', ciclo: 'MENSAL' });
+                setPlanoEscolhido('individual');
+              }}
               className="btn-primary w-full mt-5 flex items-center justify-center gap-2"
             >
-              Assinar pela Logos Academy
-            </a>
+              Assinar agora
+            </button>
           )}
         </article>
         <article className="plan-card plan-card-featured card p-6">
@@ -401,7 +403,7 @@ export default function Membership() {
         </article>
       </section>
 
-      <p className="membership-trust"><ShieldCheck size={15} /> Assinatura processada pela Logos Academy (PIX e cartão). Reembolso conforme a política da Logos. Acesso liberado em poucos minutos após a confirmação do pagamento.</p>
+      <p className="membership-trust"><ShieldCheck size={15} /> Pagamento processado com segurança (PIX e cartão). Reembolso automático em até 7 dias. Acesso liberado em poucos minutos após a confirmação do pagamento.</p>
     </div>
   );
 }
