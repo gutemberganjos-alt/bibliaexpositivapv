@@ -576,13 +576,12 @@
    pra não afetar as outras telas do app (que seguem no tema claro).
    ============================================================ */
 .home-dark {
+  display: block;
   width: 100%;
+  min-height: 100%;
   color: var(--cor-navy-texto);
   background: radial-gradient(ellipse 80% 45% at 50% -8%, rgba(228,190,107,.14), transparent 60%),
               linear-gradient(180deg, #0E2038 0%, #0A1728 100%);
-  margin: 0 calc(50% - 50vw);
-  padding-left: calc(50vw - 50%);
-  padding-right: calc(50vw - 50%);
 }
 .home-dark .eyebrow { color: var(--cor-ouro-claro); }
 .home-dark .dashboard-title { color: #FFFFFF; }
