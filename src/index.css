@@ -569,3 +569,90 @@
   border-top: 1px solid var(--cor-borda);
   font-size: .85rem;
 }
+
+/* ============================================================
+   Home do app (tela inicial, /inicio) — tema ESCURO navy+dourado
+   Mesma paleta da Landing (--cor-navy*/--cor-ouro*), escopada aqui
+   pra não afetar as outras telas do app (que seguem no tema claro).
+   ============================================================ */
+.home-dark {
+  width: 100%;
+  color: var(--cor-navy-texto);
+  background: radial-gradient(ellipse 80% 45% at 50% -8%, rgba(228,190,107,.14), transparent 60%),
+              linear-gradient(180deg, #0E2038 0%, #0A1728 100%);
+  margin: 0 calc(50% - 50vw);
+  padding-left: calc(50vw - 50%);
+  padding-right: calc(50vw - 50%);
+}
+.home-dark .eyebrow { color: var(--cor-ouro-claro); }
+.home-dark .dashboard-title { color: #FFFFFF; }
+.home-dark .dashboard-title b, .home-dark .dashboard-title-accent { color: var(--cor-ouro-claro); font-weight: inherit; }
+.home-dark .dashboard-subtitle { color: var(--cor-navy-texto-dim); }
+
+.home-dark .card { background: #13294A; border: 1px solid var(--cor-navy-borda); color: var(--cor-navy-texto); }
+.home-dark .card:hover { border-color: rgba(228,190,107,.45); background-color: #16305a; }
+.home-dark .card p, .home-dark .card span { color: var(--cor-navy-texto-dim); }
+
+.home-dark .objective-choice { border-color: var(--cor-navy-borda); background: rgba(255,255,255,.03); color: var(--cor-navy-texto); }
+.home-dark .objective-choice:hover { border-color: rgba(228,190,107,.4); background: rgba(228,190,107,.06); }
+.home-dark .objective-choice small { color: var(--cor-navy-texto-dim); }
+
+.home-dark .home-app-frame {
+  background: #13294A;
+  border: 1px solid var(--cor-navy-borda);
+  border-radius: 22px;
+  padding: 1.1rem 1.1rem 1.3rem;
+  box-shadow: 0 20px 50px rgba(0,0,0,.35);
+}
+.home-app-frame-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.1rem; }
+.home-app-frame-brand { display: flex; align-items: center; gap: .5rem; }
+.home-app-frame-brand img { width: 26px; height: 26px; border-radius: 7px; }
+.home-app-frame-brand span { font-family: 'Manrope', system-ui, sans-serif; font-weight: 700; font-size: .85rem; color: #fff; }
+.home-app-frame-icons { display: flex; align-items: center; gap: .7rem; color: var(--cor-navy-texto-dim); }
+.home-app-frame-icons .avatar-dot { width: 20px; height: 20px; border-radius: 50%; background: var(--cor-ouro-claro); }
+
+.formato-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: .65rem; }
+.formato-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  text-align: center;
+  padding: 1rem .5rem .85rem;
+  background: linear-gradient(155deg, rgba(228,190,107,.07), rgba(255,255,255,.02));
+  border: 1px solid var(--cor-navy-borda);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: var(--transicao);
+}
+.formato-tile::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--cor-ouro), var(--cor-ouro-claro));
+  opacity: .85;
+}
+.formato-tile:hover, .formato-tile:focus-visible {
+  border-color: rgba(228,190,107,.55);
+  background: linear-gradient(155deg, rgba(228,190,107,.14), rgba(255,255,255,.03));
+  transform: translateY(-2px);
+}
+.formato-tile-icon {
+  width: 40px; height: 40px;
+  display: grid; place-items: center;
+  border-radius: 11px;
+  background: rgba(228,190,107,.12);
+  border: 1px solid rgba(228,190,107,.3);
+  color: var(--cor-ouro-claro);
+}
+.formato-tile-label {
+  font-family: 'Manrope', system-ui, sans-serif;
+  font-size: .72rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--cor-navy-texto);
+  letter-spacing: .01em;
+}
