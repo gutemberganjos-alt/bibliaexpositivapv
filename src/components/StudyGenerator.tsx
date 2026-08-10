@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Loader2, AlertCircle, Sparkles, Copy, RotateCcw, BookmarkPlus, Check, ClipboardList } from 'lucide-react';
+import { Loader2, AlertCircle, Sparkles, Copy, RotateCcw, BookmarkPlus, Check, ClipboardList, Lock } from 'lucide-react';
 import {
   MODOS,
   PUBLICOS,
@@ -11,6 +11,9 @@ import {
 import { gerarEstudoStream } from '../lib/gerar';
 import type { EstudoResultado } from '../lib/gerar';
 import { useToast } from '../contexts/ToastContext';
+import { useSubscription } from '../contexts/SubscriptionContext';
+import { rotuloRestantes } from '../lib/quota';
+import TrialPaywall from './TrialPaywall';
 import { saveStudy } from '../lib/study-library';
 import { cacheStudy, getCachedStudy } from '../lib/study-cache';
 import LessonKit from './LessonKit';
@@ -49,8 +52,15 @@ export default function StudyGenerator({
   const [salvo, setSalvo] = useState(false);
   const [reutilizado, setReutilizado] = useState(false);
   const [mostrarKit, setMostrarKit] = useState(false);
+  /** Convite de assinatura: aberto quando o teste grátis acaba. */
+  const [paywall, setPaywall] = useState(false);
 
   const { showToast } = useToast();
+  const { active, quota, refreshQuota } = useSubscription();
+
+  // Contador do teste grátis. Só aparece para quem ainda não assinou.
+  const emTeste = !active && quota?.trial === true;
+  const semGeracoes = emTeste && quota.remaining <= 0;
 
   // Aborta a geração se o componente for desmontado no meio do stream.
   const abortRef = useRef<null | (() => void)>(null);
@@ -59,6 +69,11 @@ export default function StudyGenerator({
   const handleGerar = () => {
     if (!referencia.trim()) {
       setError('Informe um texto, tema ou referência bíblica.');
+      return;
+    }
+    // Teste grátis já encerrado: mostra o convite antes de chamar o servidor.
+    if (semGeracoes) {
+      setPaywall(true);
       return;
     }
     const params = { modoId, publicoId, referencia, perfilId: getStudyProfileId() };
@@ -95,9 +110,17 @@ export default function StudyGenerator({
           setStreaming(false);
           setLoading(false);
           abortRef.current = null;
+          // Atualiza o contador do teste grátis logo após consumir uma geração.
+          void refreshQuota();
         },
-        onError: (msg) => {
-          setError(msg);
+        onError: (msg, code) => {
+          // Acabaram as gerações do teste: abre o convite em vez de um erro seco.
+          if (code === 'trial_exhausted') {
+            setPaywall(true);
+            void refreshQuota();
+          } else {
+            setError(msg);
+          }
           setStreaming(false);
           setLoading(false);
           setStreamHtml('');
@@ -400,6 +423,10 @@ export default function StudyGenerator({
           <>
             <Loader2 size={16} className="animate-spin" /> Gerando material…
           </>
+        ) : semGeracoes ? (
+          <>
+            <Lock size={16} /> Assinar para continuar
+          </>
         ) : (
           <>
             <Sparkles size={16} /> Gerar estudo
@@ -407,11 +434,22 @@ export default function StudyGenerator({
         )}
       </button>
 
+      {/* Contador do teste grátis: a pessoa precisa saber que o limite existe
+          ANTES de bater nele, senão o bloqueio parece armadilha. */}
+      {emTeste && !loading && (
+        <p className="text-center text-xs text-[var(--cor-dourado-dim)] mt-3 font-['Manrope']">
+          {rotuloRestantes(quota)}
+          {quota.remaining > 0 && ' no seu teste gratuito.'}
+        </p>
+      )}
+
       {loading && (
         <p className="text-center text-xs text-[var(--cor-texto-dim)] mt-4 font-['Manrope'] animate-pulse">
           Pesquisando as Escrituras e preparando o material. Isso pode levar alguns segundos.
         </p>
       )}
+
+      {paywall && <TrialPaywall onClose={() => setPaywall(false)} />}
     </div>
   );
 }

@@ -9,6 +9,7 @@ import {
   type PlanId, type FormaPagamento, type Ciclo, type PixCobranca,
 } from '../lib/subscription';
 import { trackInitiateCheckout } from '../lib/pixel';
+import { TESTE_GRATIS_LIMITE } from '../lib/quota';
 
 const BENEFITS = [
   'Estudos, sermões e exegeses estruturados',
@@ -81,14 +82,18 @@ export default function Membership() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusRetorno, active]);
 
-  const gated = (location.state as { gated?: boolean } | null)?.gated;
+  const navState = location.state as
+    | { gated?: boolean; trialEnded?: boolean; plano?: PlanId; ciclo?: Ciclo }
+    | null;
+  const gated = navState?.gated;
+  const trialEnded = navState?.trialEnded;
 
   // O Asaas exige CPF/CNPJ e a forma de pagamento na criação da assinatura.
-  const [planoEscolhido, setPlanoEscolhido] = useState<PlanId | null>(null);
+  const [planoEscolhido, setPlanoEscolhido] = useState<PlanId | null>(navState?.plano ?? null);
   const [documento, setDocumento] = useState('');
   const [telefone, setTelefone] = useState('');
   const [forma, setForma] = useState<FormaPagamento>('PIX');
-  const [ciclo, setCiclo] = useState<Ciclo>('MENSAL');
+  const [ciclo, setCiclo] = useState<Ciclo>(navState?.ciclo ?? 'MENSAL');
   const [cep, setCep] = useState('');
   const [numero, setNumero] = useState('');
   const [complemento, setComplemento] = useState('');
@@ -158,7 +163,11 @@ export default function Membership() {
 
       {gated && !active && !confirmando && (
         <div className="card p-4 mb-5 border-[var(--cor-dourado)]/40 text-center">
-          <p className="text-sm text-[var(--cor-dourado-claro)]">Este recurso é exclusivo para assinantes. Escolha um plano para liberar a geração de estudos.</p>
+          <p className="text-sm text-[var(--cor-dourado-claro)]">
+            {trialEnded
+              ? `Você já usou suas ${TESTE_GRATIS_LIMITE} gerações gratuitas. Escolha um plano para continuar preparando seus estudos.`
+              : 'Este recurso é exclusivo para assinantes. Escolha um plano para liberar a geração de estudos.'}
+          </p>
         </div>
       )}
 

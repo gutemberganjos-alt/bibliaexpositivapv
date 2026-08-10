@@ -42,13 +42,19 @@ const TRANSIENTES = [429, 500, 502, 503, 504];
 const ENFORCE_SUBSCRIPTION = (Deno.env.get('ENFORCE_SUBSCRIPTION') ?? 'true') !== 'false';
 
 /**
- * Verifica no servidor se o usuário do JWT tem assinatura ativa E consome 1 unidade
- * de franquia mensal — tudo em uma chamada atômica no banco (RPC consume_quota),
- * para que pedidos simultâneos não furem o limite. Chamado ANTES do Gemini, de
- * propósito: nunca chamamos a IA além do que o plano permite.
- * Limites (definidos na função consume_quota do banco): premium=30/mês, church=150/mês.
+ * Verifica no servidor se o usuário do JWT pode gerar E consome 1 unidade da
+ * franquia — tudo em uma chamada atômica no banco (RPC consume_quota), para que
+ * pedidos simultâneos não furem o limite. Chamado ANTES do Gemini, de propósito:
+ * nunca chamamos a IA além do que o plano permite.
+ *
+ * Quem NÃO assinou tem um teste grátis de TESTE_GRATIS_LIMITE gerações vitalícias
+ * (contadas no banco em usage_counters com period='trial'). Ao esgotar, devolvemos
+ * o código `trial_exhausted` para o app abrir a tela de assinatura.
+ *
+ * Limites de assinante (na função consume_quota): premium=30/mês, church=150/mês.
  * Quando ENFORCE_SUBSCRIPTION está desligado, sempre libera (dev/testes).
  */
+const TESTE_GRATIS_LIMITE = 3;
 /** Devolve a franquia consumida quando a geração falha (não cobra do assinante por erro nosso). */
 async function devolverQuota(uid: string | null): Promise<void> {
   if (!uid || !ENFORCE_SUBSCRIPTION) return;
@@ -64,7 +70,17 @@ async function devolverQuota(uid: string | null): Promise<void> {
   } catch { /* devolução é best-effort */ }
 }
 
-async function verificarAssinaturaEQuota(req: Request): Promise<{ ok: boolean; status?: number; error?: string; uid?: string }> {
+interface ResultadoQuota {
+  ok: boolean;
+  status?: number;
+  error?: string;
+  code?: 'trial_exhausted' | 'quota_exhausted' | 'auth' | 'erro';
+  uid?: string;
+  /** Situação da franquia, devolvida ao app para atualizar o contador na tela. */
+  quota?: { trial: boolean; used: number; limit: number; remaining: number };
+}
+
+async function verificarAssinaturaEQuota(req: Request): Promise<ResultadoQuota> {
   if (ehRoboSeo(req)) return { ok: true };
   if (!ENFORCE_SUBSCRIPTION) return { ok: true };
   try {
@@ -93,17 +109,33 @@ async function verificarAssinaturaEQuota(req: Request): Promise<{ ok: boolean; s
     const rows = await r.json();
     const row = Array.isArray(rows) ? rows[0] : rows;
 
-    if (!row?.active) return { ok: false, status: 402, error: 'Assinatura ativa necessária para gerar estudos.' };
-    if (!row?.allowed) {
+    const usado = Number(row?.used ?? 0);
+    const limite = Number(row?.limit_val ?? 0);
+    const ehTeste = row?.trial === true;
+    const quota = { trial: ehTeste, used: usado, limit: limite, remaining: Math.max(limite - usado, 0) };
+
+    if (row?.allowed) return { ok: true, uid, quota };
+
+    // Teste grátis esgotado: o app abre a tela de assinatura com esse código.
+    if (ehTeste) {
       return {
         ok: false,
-        status: 429,
-        error: `Limite mensal do seu plano atingido (${row.used}/${row.limit_val} gerações). A franquia renova no início do próximo mês.`,
+        status: 402,
+        code: 'trial_exhausted',
+        error: `Você usou suas ${TESTE_GRATIS_LIMITE} gerações gratuitas. Assine para continuar.`,
+        quota,
       };
     }
-    return { ok: true, uid };
+
+    return {
+      ok: false,
+      status: 429,
+      code: 'quota_exhausted',
+      error: `Limite mensal do seu plano atingido (${usado}/${limite} gerações). A franquia renova no início do próximo mês.`,
+      quota,
+    };
   } catch {
-    return { ok: false, status: 403, error: 'Falha ao validar a assinatura.' };
+    return { ok: false, status: 403, code: 'erro', error: 'Falha ao validar a assinatura.' };
   }
 }
 
@@ -123,11 +155,16 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'Referência muito longa.' }, 400);
     }
 
-    // Bloqueio de acesso + franquia: exige assinatura ativa e consome 1 geração do
-    // limite mensal do plano (quando ENFORCE_SUBSCRIPTION=true). Feito ANTES de
-    // chamar o Gemini — nunca gastamos IA além do que o plano paga.
+    // Bloqueio de acesso + franquia: assinatura ativa OU teste grátis, consumindo
+    // 1 geração (quando ENFORCE_SUBSCRIPTION=true). Feito ANTES de chamar o Gemini
+    // — nunca gastamos IA além do que o plano (ou o teste) permite.
     const assinatura = await verificarAssinaturaEQuota(req);
-    if (!assinatura.ok) return json({ error: assinatura.error }, assinatura.status ?? 402);
+    if (!assinatura.ok) {
+      return json(
+        { error: assinatura.error, code: assinatura.code, quota: assinatura.quota },
+        assinatura.status ?? 402,
+      );
+    }
 
     const uid = assinatura.uid ?? null;
 

@@ -71,8 +71,12 @@ export interface GerarEstudoStreamCallbacks {
   onDelta?: (htmlParcial: string) => void;
   /** Resultado final, limpo e com meta completa. */
   onDone: (resultado: EstudoResultado) => void;
-  /** Erro durante a geração. */
-  onError: (mensagem: string) => void;
+  /**
+   * Erro durante a geração. `code` vem do servidor e identifica bloqueios de
+   * franquia: 'trial_exhausted' (acabaram as gerações do teste grátis) e
+   * 'quota_exhausted' (assinante bateu o limite do mês).
+   */
+  onError: (mensagem: string, code?: string) => void;
 }
 
 /**
@@ -116,13 +120,16 @@ export function gerarEstudoStream(
       });
 
       if (!resp.ok || !resp.body) {
-        // Erro antes do stream (ex.: 400/500 com JSON). Tenta extrair a mensagem.
+        // Erro antes do stream (ex.: 400/402/429 com JSON). Tenta extrair a mensagem
+        // e o código — é por ele que a tela sabe abrir o convite de assinatura.
         let msg = 'Não foi possível gerar o material. Tente novamente.';
+        let code: string | undefined;
         try {
           const body = await resp.json();
           if (body?.error) msg = body.error;
+          if (body?.code) code = String(body.code);
         } catch { /* corpo não-JSON */ }
-        cb.onError(msg);
+        cb.onError(msg, code);
         return;
       }
 
