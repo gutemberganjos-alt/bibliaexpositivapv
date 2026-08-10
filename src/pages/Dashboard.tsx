@@ -53,7 +53,17 @@ export default function Dashboard() {
     setObjective(id);
   };
   return (
-    <div className="home-dark">
+    <div
+      className="home-dark"
+      style={{
+        display: 'block',
+        width: '100%',
+        minHeight: '100%',
+        color: 'var(--cor-navy-texto)',
+        background:
+          'radial-gradient(ellipse 80% 45% at 50% -8%, rgba(228,190,107,.14), transparent 60%), linear-gradient(180deg, #0E2038 0%, #0A1728 100%)',
+      }}
+    >
     <div className="p-4 max-w-3xl mx-auto w-full overflow-x-hidden">
       <header className="home-hero mb-6 pt-6 pb-2 min-w-0">
         <p className="eyebrow">BÍBLIA EXPOSITIVA</p>
