@@ -8,7 +8,7 @@
 //  - Assets versionados (/assets, /icons): cache-first (o nome tem hash, é seguro).
 //  - activate: apaga caches de versões anteriores e assume o controle na hora.
 
-const VERSION = 'v5';
+const VERSION = 'v6';
 const CACHE_NAME = `biblia-pv-${VERSION}`;
 const OFFLINE_URL = '/';
 
