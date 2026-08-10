@@ -406,9 +406,19 @@ export default function Membership() {
           <p>Uma base para professores, líderes e ministérios estudarem com unidade.</p>
           <p className="text-2xl text-[var(--cor-dourado)] font-['Playfair_Display'] mt-4">{PLANOS.igreja.precoLabel}<span className="text-sm text-[var(--cor-texto-dim)] font-sans"> {PLANOS.igreja.ciclo}</span></p>
           <p className="text-xs text-[var(--cor-texto-dim)] mt-1">ou {PLANOS.igreja.precos.ANUAL.precoLabel} por ano — {PLANOS.igreja.precos.ANUAL.economiaLabel?.toLowerCase()}</p>
-          <button disabled className="btn-primary w-full mt-5 disabled:opacity-60">
-            {active ? 'Plano ativo' : 'Em breve — fale com o suporte'}
-          </button>
+          {active ? (
+            <button disabled className="btn-primary w-full mt-5 disabled:opacity-60">Plano ativo</button>
+          ) : (
+            <button
+              onClick={() => {
+                trackInitiateCheckout({ value: PLANOS.igreja.precos.MENSAL.valor, plano: 'Igreja', ciclo: 'MENSAL' });
+                setPlanoEscolhido('igreja');
+              }}
+              className="btn-primary w-full mt-5 flex items-center justify-center gap-2"
+            >
+              Assinar agora
+            </button>
+          )}
         </article>
       </section>
 
