@@ -96,6 +96,15 @@ export default function Membership() {
   const [erroTel, setErroTel] = useState('');
   const [erroEnd, setErroEnd] = useState('');
 
+  // O formulário "FINALIZAR ASSINATURA" nasce ACIMA dos cards de planos no
+  // layout — quem clica em "Assinar agora" lá embaixo não vê nada mudar na
+  // tela e acha que travou (foi o que aconteceu com o Daniel). Rola até o
+  // formulário assim que ele aparece.
+  const formularioRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (planoEscolhido) formularioRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [planoEscolhido]);
+
   async function confirmarAssinatura() {
     if (!planoEscolhido) return;
     let invalido = false;
@@ -224,7 +233,7 @@ export default function Membership() {
       )}
 
       {planoEscolhido && !active && !pix && (
-        <section className="card p-5 mb-5">
+        <section ref={formularioRef} className="card p-5 mb-5">
           <p className="eyebrow mb-1">FINALIZAR ASSINATURA</p>
           <h2 className="text-lg text-[var(--cor-dourado-claro)] mb-1">
             Plano {PLANOS[planoEscolhido].nome} — {PLANOS[planoEscolhido].precos[ciclo].precoLabel} {PLANOS[planoEscolhido].precos[ciclo].ciclo}
