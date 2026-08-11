@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Building2, Check, Crown, ShieldCheck, Loader2 } from 'lucide-react';
+import { Building2, Check, Crown, ShieldCheck, Loader2, Unlock } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
 import {
@@ -174,10 +174,14 @@ export default function Membership() {
       {active && (
         <div className="card p-5 mb-5 text-center">
           <p className="text-[var(--cor-dourado-claro)] flex items-center justify-center gap-2">
-            <ShieldCheck size={18} /> Sua assinatura está ativa
-            {subscription?.tier === 'church' ? ' — plano Igreja' : subscription?.tier === 'premium' ? ' — plano Individual' : ''}.
+            <ShieldCheck size={18} /> {subscription?.cycle === 'AVULSO' ? 'Seu acesso avulso está ativo' : 'Sua assinatura está ativa'}
+            {subscription?.cycle === 'AVULSO' ? '' : subscription?.tier === 'church' ? ' — plano Igreja' : subscription?.tier === 'premium' ? ' — plano Individual' : ''}.
           </p>
-          {subscription?.cancel_at_period_end && subscription?.current_period_end && (
+          {subscription?.cycle === 'AVULSO' && subscription?.current_period_end ? (
+            <p className="text-xs text-[var(--cor-texto-dim)] mt-1">
+              Não renova sozinho. Acesso até {new Date(subscription.current_period_end).toLocaleDateString('pt-BR')} — volte e pague de novo quando quiser continuar.
+            </p>
+          ) : subscription?.cancel_at_period_end && subscription?.current_period_end && (
             <p className="text-xs text-[var(--cor-texto-dim)] mt-1">
               Cancelamento agendado. Acesso até {new Date(subscription.current_period_end).toLocaleDateString('pt-BR')}.
             </p>
@@ -252,26 +256,35 @@ export default function Membership() {
             vêm automaticamente pelo CEP.
           </p>
 
-          <p className="text-sm text-[var(--cor-texto-medio)] mb-2">Como prefere cobrar?</p>
-          <div className="grid grid-cols-2 gap-3 mb-5">
-            {(['MENSAL', 'ANUAL'] as Ciclo[]).map((c) => {
-              const preco = PLANOS[planoEscolhido].precos[c];
-              return (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setCiclo(c)}
-                  className={`card p-3 text-sm text-left ${ciclo === c ? 'border-[var(--cor-dourado)]' : ''}`}
-                >
-                  {c === 'MENSAL' ? 'Mensal' : 'Anual'}
-                  <span className="block text-[var(--cor-dourado-claro)]">{preco.precoLabel}</span>
-                  {preco.economiaLabel && (
-                    <span className="block text-xs text-[var(--cor-texto-dim)]">{preco.economiaLabel}</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+          {PLANOS[planoEscolhido].recorrente ? (
+            <>
+              <p className="text-sm text-[var(--cor-texto-medio)] mb-2">Como prefere cobrar?</p>
+              <div className="grid grid-cols-2 gap-3 mb-5">
+                {(['MENSAL', 'ANUAL'] as Ciclo[]).map((c) => {
+                  const preco = PLANOS[planoEscolhido].precos[c];
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setCiclo(c)}
+                      className={`card p-3 text-sm text-left ${ciclo === c ? 'border-[var(--cor-dourado)]' : ''}`}
+                    >
+                      {c === 'MENSAL' ? 'Mensal' : 'Anual'}
+                      <span className="block text-[var(--cor-dourado-claro)]">{preco.precoLabel}</span>
+                      {preco.economiaLabel && (
+                        <span className="block text-xs text-[var(--cor-texto-dim)]">{preco.economiaLabel}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <p className="card p-3 text-sm text-[var(--cor-texto-medio)] mb-5 flex items-center gap-2">
+              <Unlock size={15} className="text-[var(--cor-dourado)] shrink-0" />
+              30 dias de acesso, cobrança única. Não renova sozinho — você volta e paga de novo só quando quiser continuar.
+            </p>
+          )}
 
           {/* Caixa dos dados de cobrança: tudo aqui é exigido pelo Asaas. */}
           <div className="dados-cobranca">
@@ -354,7 +367,9 @@ export default function Membership() {
               className={`card p-3 text-sm text-left ${forma === 'PIX' ? 'border-[var(--cor-dourado)]' : ''}`}
             >
               PIX
-              <span className="block text-xs text-[var(--cor-texto-dim)]">Cobranca todo mes por QR code</span>
+              <span className="block text-xs text-[var(--cor-texto-dim)]">
+                {PLANOS[planoEscolhido].recorrente ? 'Cobranca todo periodo por QR code' : 'QR code, cobrança única'}
+              </span>
             </button>
             <button
               type="button"
@@ -362,7 +377,9 @@ export default function Membership() {
               className={`card p-3 text-sm text-left ${forma === 'CREDIT_CARD' ? 'border-[var(--cor-dourado)]' : ''}`}
             >
               Cartao de credito
-              <span className="block text-xs text-[var(--cor-texto-dim)]">Renova sozinho, sem esforco</span>
+              <span className="block text-xs text-[var(--cor-texto-dim)]">
+                {PLANOS[planoEscolhido].recorrente ? 'Renova sozinho, sem esforco' : 'Cobrança única, não renova sozinho'}
+              </span>
             </button>
           </div>
 
@@ -386,7 +403,31 @@ export default function Membership() {
         {BENEFITS.map((benefit) => <div key={benefit}><Check size={17} /> <span>{benefit}</span></div>)}
       </section>
 
-      <section className="grid md:grid-cols-2 gap-4">
+      <section className="grid md:grid-cols-3 gap-4">
+        <article className="plan-card card p-6 border-[var(--cor-dourado)]">
+          <span className="inline-block text-[10px] font-bold tracking-widest uppercase text-[var(--cor-dourado)] bg-[var(--cor-dourado-bg)] px-2 py-1 rounded-full mb-3">
+            Sem fidelidade
+          </span>
+          <Unlock size={23} className="text-[var(--cor-dourado)] mb-4" />
+          <p className="eyebrow">AVULSO</p>
+          <h2>Quer testar sem compromisso?</h2>
+          <p>30 dias de acesso completo. Paga uma vez, usa o mês, e só renova se quiser — sem cobrança automática.</p>
+          <p className="text-2xl text-[var(--cor-dourado)] font-['Playfair_Display'] mt-4">{PLANOS.avulso.precoLabel}<span className="text-sm text-[var(--cor-texto-dim)] font-sans"> {PLANOS.avulso.ciclo}</span></p>
+          <p className="text-xs text-[var(--cor-texto-dim)] mt-1">Sem fidelidade. Sem nada para cancelar.</p>
+          {active ? (
+            <button disabled className="btn-primary w-full mt-5 disabled:opacity-60">Plano ativo</button>
+          ) : (
+            <button
+              onClick={() => {
+                trackInitiateCheckout({ value: PLANOS.avulso.precos.MENSAL.valor, plano: 'Avulso', ciclo: 'MENSAL' });
+                setPlanoEscolhido('avulso');
+              }}
+              className="btn-primary w-full mt-5 flex items-center justify-center gap-2"
+            >
+              Usar por 30 dias
+            </button>
+          )}
+        </article>
         <article className="plan-card card p-6">
           <Crown size={23} className="text-[var(--cor-dourado)] mb-4" />
           <p className="eyebrow">INDIVIDUAL</p>
@@ -431,7 +472,7 @@ export default function Membership() {
         </article>
       </section>
 
-      <p className="membership-trust"><ShieldCheck size={15} /> Pagamento processado com segurança (PIX e cartão). Reembolso automático em até 7 dias. Acesso liberado em poucos minutos após a confirmação do pagamento.</p>
+      <p className="membership-trust"><ShieldCheck size={15} /> Pagamento processado com segurança (PIX e cartão). Nos planos Individual e Igreja você cancela quando quiser, sem multa — dentro de 7 dias o reembolso é integral e automático. No plano Avulso não tem nada para cancelar: o acesso simplesmente não renova sozinho. Acesso liberado em poucos minutos após a confirmação do pagamento.</p>
     </div>
   );
 }

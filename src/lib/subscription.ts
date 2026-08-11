@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 
-export type PlanId = 'individual' | 'igreja';
+export type PlanId = 'individual' | 'igreja' | 'avulso';
 export type SubscriptionTier = 'free' | 'premium' | 'church';
 export type SubscriptionStatus =
   | 'active' | 'past_due' | 'canceled' | 'trialing' | 'incomplete';
@@ -24,6 +24,12 @@ export interface PlanoInfo {
   /** Atalhos do preço mensal — usados na landing. */
   precoLabel: string;
   ciclo: string;
+  /**
+   * false = pagamento único que dá acesso por 30 dias e NÃO renova sozinho.
+   * A pessoa volta e paga de novo só quando quiser continuar. Sem cobrança
+   * surpresa, sem nada para cancelar.
+   */
+  recorrente: boolean;
 }
 
 /**
@@ -33,7 +39,7 @@ export interface PlanoInfo {
  */
 export const PLANOS: Record<PlanId, PlanoInfo> = {
   individual: {
-    id: 'individual', nome: 'Individual', tier: 'premium',
+    id: 'individual', nome: 'Individual', tier: 'premium', recorrente: true,
     precoLabel: 'R$ 29,90', ciclo: 'por mês',
     precos: {
       MENSAL: { valor: 29.90, precoLabel: 'R$ 29,90', ciclo: 'por mês' },
@@ -41,11 +47,22 @@ export const PLANOS: Record<PlanId, PlanoInfo> = {
     },
   },
   igreja: {
-    id: 'igreja', nome: 'Igreja', tier: 'church',
+    id: 'igreja', nome: 'Igreja', tier: 'church', recorrente: true,
     precoLabel: 'R$ 99,90', ciclo: 'por mês',
     precos: {
       MENSAL: { valor: 99.90, precoLabel: 'R$ 99,90', ciclo: 'por mês' },
       ANUAL: { valor: 1019.90, precoLabel: 'R$ 1.019,90', ciclo: 'por ano', economiaLabel: 'Economize R$ 178,90' },
+    },
+  },
+  // Pagamento avulso: 30 dias de acesso, sem fidelidade e sem renovação
+  // automática. Os dois ciclos apontam pro mesmo preço só por causa do tipo
+  // (Record<Ciclo, ...>) — na tela não existe escolha de mensal/anual aqui.
+  avulso: {
+    id: 'avulso', nome: 'Avulso', tier: 'premium', recorrente: false,
+    precoLabel: 'R$ 34,90', ciclo: 'a cada 30 dias',
+    precos: {
+      MENSAL: { valor: 34.90, precoLabel: 'R$ 34,90', ciclo: 'a cada 30 dias' },
+      ANUAL: { valor: 34.90, precoLabel: 'R$ 34,90', ciclo: 'a cada 30 dias' },
     },
   },
 };

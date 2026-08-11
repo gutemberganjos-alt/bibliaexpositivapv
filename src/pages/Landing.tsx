@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import {
   Sparkles, Search, Layers, BookOpen, Users, Cloud, ArrowRight, Check,
-  ShieldCheck, GraduationCap, Church, Baby, User, Heart,
+  ShieldCheck, GraduationCap, Church, Baby, User, Heart, Unlock,
 } from 'lucide-react';
 import { MODOS } from '../lib/ai-config';
 import { PLANOS } from '../lib/subscription';
@@ -163,7 +163,23 @@ export default function Landing() {
         <section className="landing-section" id="planos">
           <p className="eyebrow mb-2 text-center">PLANOS</p>
           <h2 className="landing-section-title font-['Playfair_Display'] text-center mb-8">Ferramentas sérias para ensinar a Palavra</h2>
-          <div className="grid md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+            <article className="plan-card card p-6 border-[var(--cor-ouro)]">
+              <span className="inline-block text-[10px] font-bold tracking-widest uppercase text-[var(--cor-ouro)] bg-[#c9962e24] px-2 py-1 rounded-full mb-3">
+                Sem fidelidade
+              </span>
+              <Unlock size={23} className="landing-feature-ic mb-4" />
+              <p className="eyebrow">{PLANOS.avulso.nome.toUpperCase()}</p>
+              <h3 className="text-lg mt-1 mb-2">Quer testar sem compromisso?</h3>
+              <p className="text-2xl font-['Playfair_Display'] landing-preco">
+                {PLANOS.avulso.precoLabel}
+                <span className="text-sm font-sans landing-muted"> {PLANOS.avulso.ciclo}</span>
+                <span className="block text-xs font-sans landing-muted mt-1">Cobrança única, não renova sozinho</span>
+              </p>
+              <Link to="/cadastro" className="btn-primary w-full mt-5 flex items-center justify-center gap-2">
+                Usar por 30 dias
+              </Link>
+            </article>
             <article className="plan-card card p-6">
               <GraduationCap size={23} className="landing-feature-ic mb-4" />
               <p className="eyebrow">{PLANOS.individual.nome.toUpperCase()}</p>
@@ -196,7 +212,7 @@ export default function Landing() {
             <li><Check size={15} /> Conteúdo reutilizável sem nova geração</li>
             <li><Check size={15} /> Experiência completa em celular, tablet e computador</li>
           </ul>
-          <p className="membership-trust"><ShieldCheck size={15} /> Cobrança segura via Stripe (cartão e PIX). Reembolso integral em até 7 dias.</p>
+          <p className="membership-trust"><ShieldCheck size={15} /> Cobrança segura via PIX ou cartão. Cancele quando quiser nos planos Individual e Igreja — reembolso integral em até 7 dias. No plano Avulso não tem nada para cancelar.</p>
         </section>
 
         {/* Confiança */}

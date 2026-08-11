@@ -85,15 +85,19 @@ export default function Account() {
         </div>
 
         <p className="text-sm text-[var(--cor-texto-medio)]">
-          {TIER_LABEL[subscription?.tier ?? 'free']}
+          {subscription?.cycle === 'AVULSO' ? 'Acesso Avulso (30 dias)' : TIER_LABEL[subscription?.tier ?? 'free']}
           {subscription?.current_period_end && active && (
-            <> · {subscription.cancel_at_period_end ? 'acesso até' : 'renova em'} {new Date(subscription.current_period_end).toLocaleDateString('pt-BR')}</>
+            <> · {subscription.cycle === 'AVULSO' ? 'acesso até' : subscription.cancel_at_period_end ? 'acesso até' : 'renova em'} {new Date(subscription.current_period_end).toLocaleDateString('pt-BR')}</>
           )}
         </p>
 
         {active ? (
           <div className="mt-5">
-            {subscription?.cancel_at_period_end ? (
+            {subscription?.cycle === 'AVULSO' ? (
+              <p className="text-xs text-[var(--cor-texto-dim)]">
+                Isso não é uma assinatura — foi um pagamento único, não tem nada para cancelar. O acesso só não renova sozinho: quando o período acabar, volte em "Ver planos" se quiser continuar.
+              </p>
+            ) : subscription?.cancel_at_period_end ? (
               <p className="text-xs text-[var(--cor-texto-dim)]">
                 Cancelamento já solicitado. Você mantém o acesso até o fim do período pago.
               </p>

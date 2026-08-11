@@ -30,17 +30,30 @@ function json(body: unknown, status = 200): Response {
 
 // Precos definidos AQUI (nunca vindos do navegador, que o cliente pode adulterar).
 // nome <= 30 caracteres (limite do Asaas).
-type Cfg = { valor: number; tier: 'premium' | 'church'; nome: string; cycle: 'MONTHLY' | 'YEARLY'; meses: number };
+type Cfg = {
+  valor: number;
+  tier: 'premium' | 'church';
+  nome: string;
+  cycle: 'MONTHLY' | 'YEARLY' | 'AVULSO';
+  meses: number;
+  /** Cobrança única (sem renovação automática) em vez de assinatura recorrente. */
+  detached: boolean;
+};
 
 function planoConfig(plan: string, ciclo: string): Cfg | null {
   const anual = ciclo === 'ANUAL';
   const cycle = anual ? 'YEARLY' : 'MONTHLY';
   const meses = anual ? 12 : 1;
   if (plan === 'individual') {
-    return { valor: anual ? 295.90 : 29.90, tier: 'premium', nome: 'Biblia Expositiva Individual', cycle, meses };
+    return { valor: anual ? 295.90 : 29.90, tier: 'premium', nome: 'Biblia Expositiva Individual', cycle, meses, detached: false };
   }
   if (plan === 'igreja') {
-    return { valor: anual ? 1019.90 : 99.90, tier: 'church', nome: 'Biblia Expositiva Igreja', cycle, meses };
+    return { valor: anual ? 1019.90 : 99.90, tier: 'church', nome: 'Biblia Expositiva Igreja', cycle, meses, detached: false };
+  }
+  // Avulso: pagamento único, 30 dias de acesso, sem assinatura recorrente no
+  // Asaas — quem quiser continuar volta e paga de novo quando quiser.
+  if (plan === 'avulso') {
+    return { valor: 34.90, tier: 'premium', nome: 'Biblia Expositiva Avulso', cycle: 'AVULSO', meses: 1, detached: true };
   }
   return null;
 }
@@ -159,10 +172,18 @@ Deno.serve(async (req: Request) => {
     if (userErr || !userData?.user) return json({ error: 'Sessao invalida.' }, 401);
     const user = userData.user;
 
+    // Pagamentos avulsos nao tem assinatura no Asaas pra "expirar" sozinha: o
+    // status fica 'active' pra sempre no nosso banco ate o proximo pagamento.
+    // Por isso o bloqueio de "ja tem assinatura ativa" so vale enquanto o
+    // periodo pago (current_period_end) ainda nao passou — senao ninguem
+    // consegue renovar um avulso vencido.
     const { data: jaAtiva } = await admin
-      .from('subscriptions').select('id').eq('user_id', user.id)
+      .from('subscriptions').select('id, current_period_end').eq('user_id', user.id)
       .in('status', ['active', 'trialing']).limit(1).maybeSingle();
-    if (jaAtiva) return json({ error: 'Voce ja possui uma assinatura ativa.' }, 409);
+    const aindaDentroDoPeriodo = jaAtiva?.current_period_end
+      ? new Date(jaAtiva.current_period_end).getTime() > Date.now()
+      : Boolean(jaAtiva);
+    if (jaAtiva && aindaDentroDoPeriodo) return json({ error: 'Voce ja possui uma assinatura ativa.' }, 409);
 
     const { data: existente } = await admin
       .from('subscriptions').select('id, asaas_customer_id').eq('user_id', user.id)
@@ -216,9 +237,13 @@ Deno.serve(async (req: Request) => {
     } | null = null;
 
     if (forma === 'CREDIT_CARD') {
+      const descricao = cfg.detached ? 'Acesso avulso de 30 dias, sem renovacao automatica'
+        : cfg.cycle === 'YEARLY' ? 'Assinatura anual' : 'Assinatura mensal';
       const corpo = {
         billingTypes: ['CREDIT_CARD'],
-        chargeTypes: ['RECURRENT'],
+        // DETACHED = cobranca unica, nao cria assinatura no Asaas (nao renova
+        // sozinha). RECURRENT = assinatura de verdade, cobra de novo sozinho.
+        chargeTypes: [cfg.detached ? 'DETACHED' : 'RECURRENT'],
         minutesToExpire: 60,
         customer: customerId,
         externalReference: user.id,
@@ -229,11 +254,11 @@ Deno.serve(async (req: Request) => {
         },
         items: [{
           name: cfg.nome,
-          description: cfg.cycle === 'YEARLY' ? 'Assinatura anual' : 'Assinatura mensal',
+          description: descricao,
           quantity: 1,
           value: cfg.valor,
         }],
-        subscription: { cycle: cfg.cycle, nextDueDate: hoje },
+        ...(cfg.detached ? {} : { subscription: { cycle: cfg.cycle, nextDueDate: hoje } }),
       };
       const rk = await asaas('/checkouts', { method: 'POST', body: JSON.stringify(corpo) });
       const kJson = await rk.json();
@@ -242,6 +267,41 @@ Deno.serve(async (req: Request) => {
         return json({ error: mensagemErro(kJson, 'Nao foi possivel abrir o pagamento.') }, 400);
       }
       url = kJson?.link ?? kJson?.checkoutUrl ?? kJson?.url ?? null;
+    } else if (cfg.detached) {
+      // Avulso via PIX: cobranca UNICA (/payments), nunca /subscriptions —
+      // assim nao existe nada recorrente pra cobrar de novo sozinho.
+      const rs = await asaas('/payments', {
+        method: 'POST',
+        body: JSON.stringify({
+          customer: customerId,
+          billingType: 'PIX',
+          value: cfg.valor,
+          dueDate: hoje,
+          description: cfg.nome,
+          externalReference: user.id,
+        }),
+      });
+      const cobranca = await rs.json();
+      if (!rs.ok) {
+        console.error('[asaas-checkout] erro no pagamento avulso pix', JSON.stringify(cobranca));
+        return json({ error: mensagemErro(cobranca, 'Nao foi possivel iniciar o pagamento.') }, 400);
+      }
+      url = cobranca?.invoiceUrl ?? null;
+
+      if (cobranca?.id) {
+        const rq = await asaas(`/payments/${cobranca.id}/pixQrCode`);
+        const qJson = await rq.json().catch(() => null);
+        if (rq.ok && qJson?.payload) {
+          pix = {
+            copiaECola: qJson.payload,
+            imagemBase64: qJson.encodedImage ?? null,
+            invoiceUrl: cobranca.invoiceUrl ?? null,
+            expiraEm: qJson.expirationDate ?? null,
+          };
+        } else {
+          console.error('[asaas-checkout] sem QR code do pix avulso', JSON.stringify(qJson));
+        }
+      }
     } else {
       const rs = await asaas('/subscriptions', {
         method: 'POST',
