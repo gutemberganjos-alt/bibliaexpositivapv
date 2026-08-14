@@ -83,7 +83,7 @@ export default function StudyGenerator({
       setResultado(cached);
       setSalvo(false);
       setReutilizado(true);
-      showToast('Material recuperado do seu acervo. Nenhum crédito de IA foi usado.', 'info');
+      showToast('Material recuperado do seu acervo. Nenhuma geração foi usada.', 'info');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }

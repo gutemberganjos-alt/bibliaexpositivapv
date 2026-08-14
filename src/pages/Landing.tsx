@@ -17,7 +17,7 @@ const RECURSOS = [
 const PASSOS = [
   { titulo: '1. Escolha o formato', texto: 'Devocional, estudo completo, sermão, exegese, curso e mais — 9 formatos para cada necessidade.' },
   { titulo: '2. Escolha o público', texto: 'Crianças, adolescentes, jovens, igreja, professores, pastores ou teologia acadêmica.' },
-  { titulo: '3. Informe o texto ou tema', texto: 'Uma referência bíblica ou um tema. A IA gera o material completo em segundos, com selos de confiabilidade.' },
+  { titulo: '3. Informe o texto ou tema', texto: 'Uma referência bíblica ou um tema. Nossa Bíblia Digital gera o material completo em segundos, com selos de confiabilidade.' },
 ];
 
 const PERFIS = [
@@ -245,7 +245,7 @@ export default function Landing() {
           <a href="/estudo/">Estudos por capítulo</a>
           <a href="/tema/">Estudos por tema</a>
           <a href="/sermao/">Esboços de sermão</a>
-          <a href="/usar-ia-para-pregar">IA e ministério</a>
+          <a href="/usar-ia-para-pregar">Bíblia Digital e ministério</a>
         </nav>
         <nav className="flex gap-4 flex-wrap justify-center">
           <Link to="/login">Entrar</Link>
