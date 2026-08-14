@@ -414,6 +414,7 @@ export default function Membership() {
           <p>30 dias de acesso completo. Paga uma vez, usa o mês, e só renova se quiser — sem cobrança automática.</p>
           <p className="text-2xl text-[var(--cor-dourado)] font-['Playfair_Display'] mt-4">{PLANOS.avulso.precoLabel}<span className="text-sm text-[var(--cor-texto-dim)] font-sans"> {PLANOS.avulso.ciclo}</span></p>
           <p className="text-xs text-[var(--cor-texto-dim)] mt-1">Sem fidelidade. Sem nada para cancelar.</p>
+          <p className="text-xs text-[var(--cor-texto-dim)] mt-1">Até {PLANOS.avulso.limiteMensal} gerações durante os 30 dias</p>
           {active ? (
             <button disabled className="btn-primary w-full mt-5 disabled:opacity-60">Plano ativo</button>
           ) : (
@@ -435,6 +436,7 @@ export default function Membership() {
           <p>Seu acervo, seus estudos e seus kits em uma experiência única.</p>
           <p className="text-2xl text-[var(--cor-dourado)] font-['Playfair_Display'] mt-4">{PLANOS.individual.precoLabel}<span className="text-sm text-[var(--cor-texto-dim)] font-sans"> {PLANOS.individual.ciclo}</span></p>
           <p className="text-xs text-[var(--cor-texto-dim)] mt-1">ou {PLANOS.individual.precos.ANUAL.precoLabel} por ano — {PLANOS.individual.precos.ANUAL.economiaLabel?.toLowerCase()}</p>
+          <p className="text-xs text-[var(--cor-texto-dim)] mt-1">Até {PLANOS.individual.limiteMensal} gerações por mês</p>
           {active ? (
             <button disabled className="btn-primary w-full mt-5 disabled:opacity-60">Plano ativo</button>
           ) : (
@@ -456,6 +458,7 @@ export default function Membership() {
           <p>Uma base para professores, líderes e ministérios estudarem com unidade.</p>
           <p className="text-2xl text-[var(--cor-dourado)] font-['Playfair_Display'] mt-4">{PLANOS.igreja.precoLabel}<span className="text-sm text-[var(--cor-texto-dim)] font-sans"> {PLANOS.igreja.ciclo}</span></p>
           <p className="text-xs text-[var(--cor-texto-dim)] mt-1">ou {PLANOS.igreja.precos.ANUAL.precoLabel} por ano — {PLANOS.igreja.precos.ANUAL.economiaLabel?.toLowerCase()}</p>
+          <p className="text-xs text-[var(--cor-texto-dim)] mt-1">Até {PLANOS.igreja.limiteMensal} gerações por mês</p>
           {active ? (
             <button disabled className="btn-primary w-full mt-5 disabled:opacity-60">Plano ativo</button>
           ) : (

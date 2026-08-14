@@ -45,15 +45,15 @@ function planoConfig(plan: string, ciclo: string): Cfg | null {
   const cycle = anual ? 'YEARLY' : 'MONTHLY';
   const meses = anual ? 12 : 1;
   if (plan === 'individual') {
-    return { valor: anual ? 295.90 : 29.90, tier: 'premium', nome: 'Biblia Expositiva Individual', cycle, meses, detached: false };
+    return { valor: anual ? 315.90 : 49.90, tier: 'premium', nome: 'Biblia Expositiva Individual', cycle, meses, detached: false };
   }
   if (plan === 'igreja') {
-    return { valor: anual ? 1019.90 : 99.90, tier: 'church', nome: 'Biblia Expositiva Igreja', cycle, meses, detached: false };
+    return { valor: anual ? 1039.90 : 119.90, tier: 'church', nome: 'Biblia Expositiva Igreja', cycle, meses, detached: false };
   }
   // Avulso: pagamento único, 30 dias de acesso, sem assinatura recorrente no
   // Asaas — quem quiser continuar volta e paga de novo quando quiser.
   if (plan === 'avulso') {
-    return { valor: 34.90, tier: 'premium', nome: 'Biblia Expositiva Avulso', cycle: 'AVULSO', meses: 1, detached: true };
+    return { valor: 54.90, tier: 'premium', nome: 'Biblia Expositiva Avulso', cycle: 'AVULSO', meses: 1, detached: true };
   }
   return null;
 }

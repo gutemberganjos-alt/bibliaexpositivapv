@@ -176,6 +176,7 @@ export default function Landing() {
                 <span className="text-sm font-sans landing-muted"> {PLANOS.avulso.ciclo}</span>
                 <span className="block text-xs font-sans landing-muted mt-1">Cobrança única, não renova sozinho</span>
               </p>
+              <p className="text-xs font-sans landing-muted mt-2">Até {PLANOS.avulso.limiteMensal} gerações durante os 30 dias</p>
               <Link to="/cadastro" className="btn-primary w-full mt-5 flex items-center justify-center gap-2">
                 Usar por 30 dias
               </Link>
@@ -189,6 +190,7 @@ export default function Landing() {
                 <span className="text-sm font-sans landing-muted"> {PLANOS.individual.ciclo}</span>
                 <span className="block text-xs font-sans landing-muted mt-1">ou {PLANOS.individual.precos.ANUAL.precoLabel} por ano</span>
               </p>
+              <p className="text-xs font-sans landing-muted mt-2">Até {PLANOS.individual.limiteMensal} gerações por mês</p>
               <Link to="/cadastro" className="btn-primary w-full mt-5 flex items-center justify-center gap-2">
                 Assinar plano individual
               </Link>
@@ -202,6 +204,7 @@ export default function Landing() {
                 <span className="text-sm font-sans landing-muted"> {PLANOS.igreja.ciclo}</span>
                 <span className="block text-xs font-sans landing-muted mt-1">ou {PLANOS.igreja.precos.ANUAL.precoLabel} por ano</span>
               </p>
+              <p className="text-xs font-sans landing-muted mt-2">Até {PLANOS.igreja.limiteMensal} gerações por mês</p>
               <Link to="/cadastro" className="btn-primary w-full mt-5 flex items-center justify-center gap-2">
                 Assinar plano igreja
               </Link>
