@@ -1,4 +1,5 @@
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase';
+import { deviceSessionId } from './deviceSession';
 
 export interface EstudoMeta {
   fontes: string;
@@ -36,22 +37,28 @@ export async function gerarEstudo(params: GerarEstudoParams): Promise<EstudoResu
     throw new Error('A referência está muito longa (máximo de 200 caracteres).');
   }
 
-  const { data, error } = await supabase.functions.invoke<EstudoResultado & { error?: string }>(
+  const { data, error } = await supabase.functions.invoke<EstudoResultado & { error?: string; code?: string }>(
     'gerar',
-    { body: { ...params, referencia } }
+    { body: { ...params, referencia }, headers: { 'x-device-session': deviceSessionId() } }
   );
 
   if (error) {
     // FunctionsHttpError expõe a resposta original em `context`.
     let detalhe = '';
+    let code = '';
     try {
       const ctx = (error as { context?: unknown }).context;
       if (ctx && typeof (ctx as Response).json === 'function') {
         const body = await (ctx as Response).json();
         detalhe = body?.error ?? '';
+        code = body?.code ?? '';
       }
     } catch {
       /* ignora falha ao ler o corpo do erro */
+    }
+    if (code === 'device_session_replaced') {
+      await supabase.auth.signOut();
+      window.alert(detalhe || 'Sua conta foi acessada em outro dispositivo. Faça login novamente.');
     }
     throw new Error(detalhe || 'Não foi possível gerar o material. Tente novamente.');
   }
@@ -114,6 +121,7 @@ export function gerarEstudoStream(
           accept: 'text/event-stream',
           apikey: SUPABASE_ANON_KEY,
           authorization: `Bearer ${token}`,
+          'x-device-session': deviceSessionId(),
         },
         body: JSON.stringify({ ...params, referencia, stream: true }),
         signal: controller.signal,
@@ -129,6 +137,10 @@ export function gerarEstudoStream(
           if (body?.error) msg = body.error;
           if (body?.code) code = String(body.code);
         } catch { /* corpo não-JSON */ }
+        if (code === 'device_session_replaced') {
+          await supabase.auth.signOut();
+          window.alert(msg);
+        }
         cb.onError(msg, code);
         return;
       }

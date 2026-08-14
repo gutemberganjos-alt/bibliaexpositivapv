@@ -74,7 +74,7 @@ interface ResultadoQuota {
   ok: boolean;
   status?: number;
   error?: string;
-  code?: 'trial_exhausted' | 'quota_exhausted' | 'auth' | 'erro';
+  code?: 'trial_exhausted' | 'quota_exhausted' | 'auth' | 'erro' | 'device_session_replaced';
   uid?: string;
   /** Situação da franquia, devolvida ao app para atualizar o contador na tela. */
   quota?: { trial: boolean; used: number; limit: number; remaining: number };
@@ -98,6 +98,28 @@ async function verificarAssinaturaEQuota(req: Request): Promise<ResultadoQuota> 
     const user = await u.json();
     const uid = user?.id;
     if (!uid) return { ok: false, status: 401, error: 'Sessão inválida.' };
+
+    // 1.5) Um aparelho por conta: se outro login (em outro navegador/celular)
+    // assumiu a conta depois deste, bloqueia ANTES de gastar franquia.
+    const deviceId = req.headers.get('x-device-session') ?? '';
+    if (deviceId) {
+      const ds = await fetch(`${url}/rest/v1/rpc/session_is_active_for`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', apikey: serviceKey, authorization: `Bearer ${serviceKey}` },
+        body: JSON.stringify({ p_user_id: uid, p_session_id: deviceId }),
+      });
+      if (ds.ok) {
+        const ativo = await ds.json();
+        if (ativo === false) {
+          return {
+            ok: false,
+            status: 401,
+            code: 'device_session_replaced',
+            error: 'Sua conta foi acessada em outro dispositivo. Faça login novamente.',
+          };
+        }
+      }
+    }
 
     // 2) RPC consume_quota(uid): checa assinatura ativa + consome franquia, atômico.
     const r = await fetch(`${url}/rest/v1/rpc/consume_quota`, {

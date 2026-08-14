@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { trackCompleteRegistration, trackOnce } from '../lib/pixel';
+import { claimDeviceSession, isDeviceSessionActive } from '../lib/deviceSession';
 
 interface AuthContextType {
   session: Session | null;
@@ -25,6 +26,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession();
         setSession(session);
         setUser(session?.user ?? null);
+
+        // Sessão restaurada (aba recarregada, app reaberto): confere se este
+        // aparelho ainda é o "dono" da conta — outro login em outro aparelho
+        // pode ter derrubado essa sessão enquanto ela estava fechada.
+        if (session?.user) {
+          const ativa = await isDeviceSessionActive();
+          if (!ativa) {
+            await supabase.auth.signOut();
+            setSession(null);
+            setUser(null);
+            window.alert('Sua conta foi acessada em outro dispositivo. Faça login novamente.');
+          }
+        }
       } catch (error) {
         console.error("Erro ao buscar sessão inicial:", error);
       } finally {
@@ -40,6 +54,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Login de verdade (não é o mesmo que sessão restaurada — isso vem do
+        // getSession() acima): esse aparelho passa a ser o único autorizado a
+        // usar a conta, derrubando qualquer outro aparelho logado antes.
+        if (event === 'SIGNED_IN' && session?.user) {
+          claimDeviceSession();
+        }
 
         // Cadastro novo (e-mail confirmado agora ou primeiro login Google): o
         // Supabase não manda um evento "SIGNED_UP" separado, então detectamos
