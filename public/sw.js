@@ -8,7 +8,9 @@
 //  - Assets versionados (/assets, /icons): cache-first (o nome tem hash, é seguro).
 //  - activate: apaga caches de versões anteriores e assume o controle na hora.
 
-const VERSION = 'v6';
+// v7: invalida caches envenenados pelo bug abaixo (CSS truncado em 5 KB fazia o
+// site aparecer sem estilo nenhum para quem já tinha visitado).
+const VERSION = 'v7';
 const CACHE_NAME = `biblia-pv-${VERSION}`;
 const OFFLINE_URL = '/';
 
@@ -32,6 +34,15 @@ function ehAssetVersionado(url) {
   return url.pathname.startsWith('/assets/') || url.pathname.startsWith('/icons/');
 }
 
+/**
+ * Só vale guardar resposta 200, completa e da nossa origem.
+ * 206 (Partial Content) é o caso perigoso: o corpo é um pedaço do arquivo, e
+ * gravado no cache ele passa a ser servido como se fosse o arquivo inteiro.
+ */
+function podeGuardar(resp) {
+  return !!resp && resp.ok && resp.status === 200 && resp.type === 'basic';
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
@@ -51,9 +62,11 @@ self.addEventListener('fetch', (event) => {
           // passaram a existir páginas públicas estáticas (/estudo/..., /tema/...),
           // visitar uma delas fazia o fallback offline do app virar aquela página.
           // Só o "/" alimenta o fallback.
-          if (url.pathname === '/' || url.pathname === '/index.html') {
+          if ((url.pathname === '/' || url.pathname === '/index.html') && podeGuardar(resp)) {
             const copia = resp.clone();
-            caches.open(CACHE_NAME).then((c) => c.put(OFFLINE_URL, copia)).catch(() => {});
+            event.waitUntil(
+              caches.open(CACHE_NAME).then((c) => c.put(OFFLINE_URL, copia)).catch(() => {}),
+            );
           }
           return resp;
         })
@@ -66,8 +79,18 @@ self.addEventListener('fetch', (event) => {
   if (ehAssetVersionado(url)) {
     event.respondWith(
       caches.match(req).then((cached) => cached || fetch(req).then((resp) => {
-        const copia = resp.clone();
-        caches.open(CACHE_NAME).then((c) => c.put(req, copia)).catch(() => {});
+        // Só guarda resposta COMPLETA e própria. Sem esta trava, um 206 (Partial
+        // Content) ou um erro do CDN virava entrada permanente no cache.
+        if (podeGuardar(resp)) {
+          const copia = resp.clone();
+          // waitUntil é obrigatório: sem ele o navegador pode encerrar o service
+          // worker no meio da gravação e deixar o arquivo pela metade no cache.
+          // Foi exatamente isso que aconteceu — o CSS de 50 KB ficou salvo com
+          // 5 KB e o site passou a carregar sem estilo para quem voltava.
+          event.waitUntil(
+            caches.open(CACHE_NAME).then((c) => c.put(req, copia)).catch(() => {}),
+          );
+        }
         return resp;
       })),
     );
