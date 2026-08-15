@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
-import { Crown, Lock, Sparkles, X } from 'lucide-react';
+import { Crown, Lock, X } from 'lucide-react';
+import PenWriting from './PenWriting';
 import { PLANOS } from '../lib/subscription';
 import { TESTE_GRATIS_LIMITE } from '../lib/quota';
 import { trackInitiateCheckout } from '../lib/pixel';
@@ -67,7 +68,7 @@ export default function TrialPaywall({ onClose }: { onClose?: () => void }) {
             className="btn-primary w-full flex flex-col items-center gap-1 py-3"
           >
             <span className="flex items-center gap-2 font-semibold">
-              <Sparkles size={16} />
+              <PenWriting size={17} />
               Assinar o plano anual — {INDIVIDUAL.precos.ANUAL.precoLabel}
             </span>
             <span className="text-xs opacity-80">

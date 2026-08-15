@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowRight, BookOpen, FolderHeart, Sparkles, X, Bell, Search,
+  ArrowRight, BookOpen, FolderHeart, X, Bell, Search,
   Heart, Presentation, ScrollText, GraduationCap, MessageCircleQuestion,
   Users, Compass, ShieldCheck,
 } from 'lucide-react';
+import PenWriting from '../components/PenWriting';
 import { fetchStudies, getCachedStudies } from '../lib/study-library';
 import { MODOS } from '../lib/ai-config';
 
@@ -125,14 +126,14 @@ export default function Dashboard() {
         </section>
       ) : selectedObjective ? (
         <section className="card p-4 mb-5 flex items-center gap-3">
-          <Sparkles size={19} className="text-[var(--cor-ouro-claro)] shrink-0" />
+          <PenWriting size={19} className="text-[var(--cor-ouro-claro)] shrink-0" />
           <p className="flex-1 text-sm text-[var(--cor-navy-texto-dim)]">Seu foco: <strong className="text-[var(--cor-ouro-claro)]">{selectedObjective.title}</strong></p>
           <button onClick={() => { localStorage.removeItem('biblia-expositiva:objetivo'); setObjective(null); }} title="Alterar objetivo" className="p-1 text-[var(--cor-navy-texto-dim)] hover:text-[var(--cor-ouro-claro)]"><X size={16} /></button>
         </section>
       ) : null}
 
       <div className="flex gap-3 mb-7">
-        <button onClick={() => navigate('/estudos')} className="btn-primary flex-1 flex items-center justify-center gap-2"><Sparkles size={16} /> Criar estudo</button>
+        <button onClick={() => navigate('/estudos')} className="btn-primary flex-1 flex items-center justify-center gap-2"><PenWriting size={17} /> Clique aqui para preparar seu material</button>
       </div>
 
       <div className="h-[1px] w-full mb-6" style={{ background: 'linear-gradient(90deg, transparent, rgba(228,190,107,0.35), transparent)' }}></div>

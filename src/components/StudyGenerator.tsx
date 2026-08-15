@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, AlertCircle, Sparkles, Copy, RotateCcw, BookmarkPlus, Check, ClipboardList, Lock } from 'lucide-react';
+import { Loader2, AlertCircle, Copy, RotateCcw, BookmarkPlus, Check, ClipboardList, Lock } from 'lucide-react';
+import PenWriting from './PenWriting';
 import {
   MODOS,
   PUBLICOS,
@@ -19,6 +20,15 @@ import { saveStudy } from '../lib/study-library';
 import { cacheStudy, getCachedStudy } from '../lib/study-cache';
 import LessonKit from './LessonKit';
 import { getStudyProfileId, profileName } from '../lib/profile';
+
+/** Mensagens de espera. Trocam a cada ~7s para o material longo não parecer travado. */
+const ETAPAS_ESPERA = [
+  'Lendo a passagem e o contexto imediato.',
+  'Levantando referências cruzadas e paralelos.',
+  'Estruturando o material no formato escolhido.',
+  'Classificando cada afirmação com os selos de confiabilidade.',
+  'Revisando e fechando o texto. Já falta pouco.',
+];
 
 interface StudyGeneratorProps {
   /** Título grande da página. */
@@ -55,6 +65,7 @@ export default function StudyGenerator({
   const [mostrarKit, setMostrarKit] = useState(false);
   /** Convite de assinatura: aberto quando o teste grátis acaba. */
   const [paywall, setPaywall] = useState(false);
+  const [etapaEspera, setEtapaEspera] = useState(0);
 
   const { showToast } = useToast();
   const { active, quota, refreshQuota } = useSubscription();
@@ -67,6 +78,13 @@ export default function StudyGenerator({
   // Aborta a geração se o componente for desmontado no meio do stream.
   const abortRef = useRef<null | (() => void)>(null);
   useEffect(() => () => abortRef.current?.(), []);
+
+  // Avança a mensagem de espera enquanto o material é gerado.
+  useEffect(() => {
+    if (!loading) return;
+    const t = setInterval(() => setEtapaEspera((n) => n + 1), 7000);
+    return () => clearInterval(t);
+  }, [loading]);
 
   const handleGerar = () => {
     if (!referencia.trim()) {
@@ -92,6 +110,7 @@ export default function StudyGenerator({
 
     setLoading(true);
     setStreaming(true);
+    setEtapaEspera(0);
     setError('');
     setResultado(null);
     setSalvo(false);
@@ -430,7 +449,7 @@ export default function StudyGenerator({
       >
         {loading ? (
           <>
-            <Loader2 size={16} className="animate-spin" /> Gerando material…
+            <PenWriting size={17} /> Preparando seu material…
           </>
         ) : semGeracoes ? (
           <>
@@ -438,7 +457,7 @@ export default function StudyGenerator({
           </>
         ) : (
           <>
-            <Sparkles size={16} /> Gerar estudo
+            <PenWriting size={17} /> Clique aqui para preparar seu material
           </>
         )}
       </button>
@@ -475,9 +494,11 @@ export default function StudyGenerator({
         </div>
       )}
 
+      {/* Exegese longa passa de um minuto. Uma frase fixa dá a sensação de travado
+          — a mensagem avança junto com o trabalho para mostrar que há progresso. */}
       {loading && (
-        <p className="text-center text-xs text-[var(--cor-texto-dim)] mt-4 font-['Manrope'] animate-pulse">
-          Pesquisando as Escrituras e preparando o material. Isso pode levar alguns segundos.
+        <p className="text-center text-xs text-[var(--cor-texto-dim)] mt-4 font-['Manrope']">
+          {ETAPAS_ESPERA[Math.min(etapaEspera, ETAPAS_ESPERA.length - 1)]}
         </p>
       )}
 

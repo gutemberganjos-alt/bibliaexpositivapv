@@ -1,13 +1,14 @@
 import { Link } from 'react-router-dom';
 import {
-  Sparkles, Search, Layers, BookOpen, Users, Cloud, ArrowRight, Check,
+  Search, Layers, BookOpen, Users, Cloud, ArrowRight, Check,
   ShieldCheck, GraduationCap, Church, Baby, User, Heart, Unlock,
 } from 'lucide-react';
+import PenWriting from '../components/PenWriting';
 import { MODOS } from '../lib/ai-config';
 import { PLANOS } from '../lib/subscription';
 
 const RECURSOS = [
-  { ic: Sparkles, titulo: 'Criação de estudos personalizados', texto: 'Em minutos, com profundidade e relevância.' },
+  { ic: PenWriting, titulo: 'Criação de estudos personalizados', texto: 'Em minutos, com profundidade e relevância.' },
   { ic: Search, titulo: 'Exegese e contexto bíblico', texto: 'Análises profundas com base nas Escrituras.' },
   { ic: Layers, titulo: 'Diversos modelos de estudos', texto: 'Devocional, expositivo, temático, indutivo e mais.' },
   { ic: Users, titulo: 'Para todos os perfis', texto: 'Recursos adaptados para cada fase e chamado.' },
@@ -73,7 +74,7 @@ export default function Landing() {
           </p>
           <div className="flex flex-wrap gap-3 mt-6">
             <Link to="/cadastro" className="btn-primary flex items-center gap-2">
-              <Sparkles size={16} /> Criar conta grátis
+              <PenWriting size={17} /> Criar conta grátis
             </Link>
             <Link to="/login" className="btn-secondary flex items-center gap-2">
               Já tenho conta <ArrowRight size={15} />
@@ -273,7 +274,7 @@ export default function Landing() {
         <section className="landing-section text-center">
           <h2 className="landing-section-title font-['Playfair_Display'] mb-4">Comece seu próximo estudo agora</h2>
           <Link to="/cadastro" className="btn-primary inline-flex items-center gap-2">
-            <Sparkles size={16} /> Criar conta grátis
+            <PenWriting size={17} /> Criar conta grátis
           </Link>
         </section>
       </main>

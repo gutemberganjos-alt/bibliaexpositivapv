@@ -702,3 +702,37 @@
   color: var(--cor-navy-texto);
   letter-spacing: .01em;
 }
+
+/* ============================================================
+   Caneta escrevendo (PenWriting) — substitui o ícone de IA.
+   A caneta desliza e as linhas do papel "aparecem" atrás dela.
+   ============================================================ */
+.pen-writing .pen-line {
+  stroke-dasharray: 12;
+  stroke-dashoffset: 0;
+}
+.pen-writing-anim .pen-body {
+  animation: pen-desliza 2.6s ease-in-out infinite;
+  transform-origin: center;
+}
+.pen-writing-anim .pen-line-1 { animation: pen-escreve 2.6s ease-in-out infinite; }
+.pen-writing-anim .pen-line-2 { animation: pen-escreve 2.6s ease-in-out .18s infinite; }
+.pen-writing-anim .pen-line-3 { animation: pen-escreve 2.6s ease-in-out .36s infinite; }
+
+@keyframes pen-desliza {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  35%      { transform: translate(-1.4px, 1.1px) rotate(-5deg); }
+  70%      { transform: translate(.7px, -.5px) rotate(3deg); }
+}
+@keyframes pen-escreve {
+  0%, 12%  { stroke-dashoffset: 12; opacity: .25; }
+  45%, 88% { stroke-dashoffset: 0;  opacity: 1; }
+  100%     { stroke-dashoffset: 12; opacity: .25; }
+}
+
+/* Quem pediu menos movimento no sistema não recebe animação nenhuma. */
+@media (prefers-reduced-motion: reduce) {
+  .pen-writing-anim .pen-body,
+  .pen-writing-anim .pen-line { animation: none; }
+  .pen-writing .pen-line { stroke-dashoffset: 0; opacity: 1; }
+}
