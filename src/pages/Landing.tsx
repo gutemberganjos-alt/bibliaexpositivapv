@@ -65,7 +65,7 @@ export default function Landing() {
         <section className="landing-hero">
           <p className="eyebrow mb-3">A PLATAFORMA COMPLETA PARA</p>
           <h1 className="font-['Playfair_Display'] landing-hero-title">
-            Criação de <b>Estudos Bíblicos</b>
+            Estudos bíblicos <b>profundos</b> em segundos
           </h1>
           <p className="landing-hero-subtitle">
             Profundidade, clareza e propósito para cada perfil. Escolha o formato, o público e um texto —
@@ -149,6 +149,48 @@ export default function Landing() {
             Cada trecho do material gerado é classificado: o que vem direto da Escritura, o que é consenso entre
             estudiosos, o que é interpretação debatida, hipótese ou tradição — para você saber exatamente o peso de cada palavra.
           </p>
+
+          {/* Amostra real: explicar os selos não convence: ver os selos aplicados, sim. */}
+          <div className="landing-mockup">
+            <div className="landing-mockup-head">
+              <b>Romanos 8:28 — Estudo Bíblico</b>
+              <span>Gerado em 34s</span>
+            </div>
+            <div className="landing-mockup-body">
+              <p>
+                <span className="selo selo-escritura">Escritura</span>
+                “E sabemos que todas as coisas cooperam para o bem daqueles que amam a Deus” (Romanos 8:28).
+              </p>
+              <p>
+                <span className="selo selo-consenso">Consenso</span>
+                O “bem” do versículo é lido, pelo contexto imediato, como a conformação ao caráter de Cristo — o
+                versículo 29 explica o 28.
+              </p>
+              <p>
+                <span className="selo selo-aceita">Interpretação aceita</span>
+                “Aqueles que amam a Deus” costuma ser entendido como equivalente aos “chamados segundo o seu
+                propósito”, na própria frase.
+              </p>
+              <p>
+                <span className="selo selo-debatida">Debatida</span>
+                O alcance de “predestinou”, no versículo 29, divide leituras reformadas e arminianas há séculos.
+              </p>
+              <p>
+                <span className="selo selo-hipotese">Hipótese</span>
+                Há quem proponha que Paulo ecoa aqui a linguagem de Gênesis 50:20. A ligação é plausível, mas o
+                texto não a torna explícita.
+              </p>
+              <p>
+                <span className="selo selo-tradicao">Tradição</span>
+                A leitura agostiniana moldou boa parte da recepção ocidental da passagem — é herança da igreja,
+                não afirmação do próprio versículo.
+              </p>
+            </div>
+            <p className="landing-mockup-nota">
+              Amostra ilustrativa. Todo material gerado sai classificado assim, trecho por trecho.
+            </p>
+          </div>
+
           <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3 max-w-3xl mx-auto">
             {SELOS.map((s) => (
               <div key={s.classe} className="landing-selo-card">

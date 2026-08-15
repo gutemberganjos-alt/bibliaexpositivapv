@@ -444,12 +444,35 @@ export default function StudyGenerator({
       </button>
 
       {/* Contador do teste grátis: a pessoa precisa saber que o limite existe
-          ANTES de bater nele, senão o bloqueio parece armadilha. */}
+          ANTES de bater nele, senão o bloqueio parece armadilha. A barra torna
+          o consumo visível — texto sozinho passa despercebido. */}
       {emTeste && !loading && (
-        <p className="text-center text-xs text-[var(--cor-dourado-dim)] mt-3 font-['Manrope']">
-          {rotuloRestantes(quota)}
-          {quota.remaining > 0 && ' no seu teste gratuito.'}
-        </p>
+        <div className="mt-4 max-w-xs mx-auto">
+          <div className="flex items-baseline justify-between mb-1.5">
+            <span className="text-[11px] font-['Manrope'] uppercase tracking-wider text-[var(--cor-dourado-dim)]">
+              Teste gratuito
+            </span>
+            <span className="text-[11px] font-['Manrope'] text-[var(--cor-texto-medio)]">
+              {quota.used} de {quota.limit} usadas
+            </span>
+          </div>
+          <div
+            className="h-1.5 w-full rounded-full bg-[var(--cor-dourado-bg)] overflow-hidden"
+            role="progressbar"
+            aria-valuenow={quota.used}
+            aria-valuemin={0}
+            aria-valuemax={quota.limit}
+            aria-label="Gerações usadas no teste gratuito"
+          >
+            <div
+              className="h-full rounded-full bg-[var(--cor-ouro)] transition-all duration-500"
+              style={{ width: `${Math.min(100, (quota.used / Math.max(quota.limit, 1)) * 100)}%` }}
+            />
+          </div>
+          <p className="text-center text-xs text-[var(--cor-dourado-dim)] mt-2 font-['Manrope']">
+            {rotuloRestantes(quota)}
+          </p>
+        </div>
       )}
 
       {loading && (

@@ -262,35 +262,39 @@
   white-space: nowrap;
   line-height: 1.4;
 }
+/* Seis matizes DISTINTOS entre si (o conjunto anterior era dessaturado demais:
+   "escritura" e "debatida" ficavam quase idênticos). Mantém o registro terroso
+   do pergaminho — nada de cor de dashboard. A ordem vai do mais firme
+   (Escritura) ao mais especulativo (Hipótese/Tradição). */
 .selo-escritura {
-  color: #7A5E12;
-  background: rgba(201, 168, 76, 0.2);
-  border-color: rgba(160, 130, 40, 0.6);
+  color: #123A63;
+  background: rgba(18, 58, 99, 0.13);
+  border-color: rgba(18, 58, 99, 0.55);
 }
 .selo-consenso {
   color: #1E6B40;
-  background: rgba(42, 122, 74, 0.16);
-  border-color: rgba(42, 122, 74, 0.55);
+  background: rgba(30, 107, 64, 0.14);
+  border-color: rgba(30, 107, 64, 0.55);
 }
 .selo-aceita {
-  color: #285E70;
-  background: rgba(58, 110, 130, 0.16);
-  border-color: rgba(58, 110, 130, 0.55);
+  color: #1F6B72;
+  background: rgba(31, 107, 114, 0.14);
+  border-color: rgba(31, 107, 114, 0.55);
 }
 .selo-debatida {
-  color: #6B5A0E;
-  background: rgba(122, 106, 16, 0.16);
-  border-color: rgba(122, 106, 16, 0.6);
+  color: #8A5A0B;
+  background: rgba(138, 90, 11, 0.15);
+  border-color: rgba(138, 90, 11, 0.6);
 }
 .selo-hipotese {
-  color: #8C2B2B;
-  background: rgba(122, 31, 31, 0.14);
-  border-color: rgba(122, 31, 31, 0.5);
+  color: #5B3E8C;
+  background: rgba(91, 62, 140, 0.14);
+  border-color: rgba(91, 62, 140, 0.5);
 }
 .selo-tradicao {
-  color: #55447A;
-  background: rgba(90, 70, 120, 0.16);
-  border-color: rgba(90, 70, 120, 0.55);
+  color: #8C4A2B;
+  background: rgba(140, 74, 43, 0.14);
+  border-color: rgba(140, 74, 43, 0.55);
 }
 
 /* ============================================================
@@ -430,11 +434,13 @@
 .landing-hero .flex { justify-content: center; }
 .landing-hero-seal { display: inline-flex; align-items: center; gap: .5rem; margin-top: 1.6rem; padding: .4rem .95rem; border: 1px solid var(--cor-navy-borda); border-radius: 999px; color: var(--cor-ouro-claro); font: 700 .68rem 'Manrope', system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
 
-.landing-section { padding: 3rem 0; }
+/* Mais respiro: 3rem deixava as seções coladas e a página com cara de folha A4. */
+.landing-section { padding: 4.5rem 0; }
+.landing-section > p { line-height: 1.75; }
 .landing-section-title { font-size: clamp(1.5rem, 3vw, 2rem); color: #FFFFFF; }
 
 /* Painel claro dentro da landing escura = amostra da área de leitura (híbrido) */
-.landing-section-alt { background: var(--cor-fundo-card); border-radius: 18px; border: 1px solid rgba(228,190,107,.28); padding: 3rem 1.5rem; color: var(--cor-pergaminho); }
+.landing-section-alt { background: var(--cor-fundo-card); border-radius: 18px; border: 1px solid rgba(228,190,107,.28); padding: 3.5rem 1.75rem; color: var(--cor-pergaminho); }
 .landing-section-alt .landing-section-title { color: var(--cor-navy); }
 .landing-section-alt .eyebrow { color: var(--cor-ouro); }
 .landing-section-alt p { color: var(--cor-texto-medio); }
@@ -453,6 +459,53 @@
 
 .landing-selo-card { border: 1px solid var(--cor-borda); border-radius: 10px; padding: .9rem 1rem; background: #fff; }
 .landing-selo-card p { color: var(--cor-texto-medio); }
+
+/* Amostra de estudo real: mostra os selos APLICADOS, em vez de só explicá-los.
+   É o argumento de venda central da marca, então ele precisa ser visto, não lido. */
+.landing-mockup {
+  max-width: 44rem;
+  margin: 0 auto 2rem;
+  background: #fff;
+  border: 1px solid var(--cor-borda);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px -14px rgba(14, 32, 56, 0.22);
+  overflow: hidden;
+  text-align: left;
+}
+.landing-mockup-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .75rem;
+  flex-wrap: wrap;
+  padding: .85rem 1.15rem;
+  background: var(--cor-navy);
+  color: var(--cor-navy-texto);
+}
+.landing-mockup-head b { font-family: 'Playfair Display', Georgia, serif; font-weight: 600; font-size: .98rem; color: #fff; }
+.landing-mockup-head span { font-family: 'Manrope', system-ui, sans-serif; font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; color: var(--cor-ouro-claro); }
+.landing-mockup-body { padding: 1.15rem 1.15rem 1.35rem; }
+.landing-mockup-body > p {
+  font-family: 'Literata', Georgia, serif;
+  font-size: .88rem;
+  line-height: 1.75;
+  color: var(--cor-pergaminho);
+  padding: .7rem .9rem;
+  border-radius: 9px;
+  border-left: 3px solid var(--cor-borda);
+  background: #FBF8F1;
+  margin-bottom: .6rem;
+}
+.landing-mockup-body > p:last-child { margin-bottom: 0; }
+.landing-mockup-body .selo { margin-right: .45rem; }
+.landing-mockup-nota {
+  font-family: 'Manrope', system-ui, sans-serif;
+  font-size: .72rem;
+  color: var(--cor-texto-dim);
+  padding: .7rem 1.15rem;
+  border-top: 1px dashed var(--cor-borda);
+  text-align: center;
+}
 
 .landing-benefits-list { max-width: 30rem; margin: 1.75rem auto 0; display: grid; gap: .5rem; }
 .landing-benefits-list li { display: flex; align-items: center; gap: .55rem; color: var(--cor-navy-texto-dim); font-size: .86rem; }
