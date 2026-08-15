@@ -77,7 +77,7 @@ export default function Dashboard() {
       <section className="home-app-frame mb-6">
         <div className="home-app-frame-header">
           <div className="home-app-frame-brand">
-            <img src="/icons/icon-192.png" alt="" />
+            <img src="/icons/logo-64.png" alt="" />
             <span>Bíblia Expositiva</span>
           </div>
           <div className="home-app-frame-icons">

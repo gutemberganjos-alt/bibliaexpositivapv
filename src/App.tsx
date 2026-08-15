@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SubscriptionProvider } from './contexts/SubscriptionContext';
@@ -8,27 +9,39 @@ import ProtectedRoute from './components/ProtectedRoute';
 import RequireSubscription from './components/RequireSubscription';
 import AdminRoute from './components/AdminRoute';
 import Layout from './components/Layout';
-import Landing from './pages/Landing';
-import Dashboard from './pages/Dashboard';
-import Account from './pages/Account';
-import Bible from './pages/Bible';
-import Estudos from './pages/Estudos';
-import Exegese from './pages/Exegese';
-import Interpretacao from './pages/Interpretacao';
-import Library from './pages/Library';
-import Membership from './pages/Membership';
-import StudyProfile from './pages/StudyProfile';
-import Termos from './pages/Termos';
-import Privacidade from './pages/Privacidade';
 
-// Auth Pages
+// Carregadas de imediato: é o que um visitante novo vê primeiro. Tudo o mais
+// entra sob demanda — antes, quem abria a landing baixava o app inteiro
+// (gerador, Bíblia, biblioteca, checkout e painel admin) antes da primeira palavra.
+import Landing from './pages/Landing';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
-import ForgotPassword from './pages/auth/ForgotPassword';
-import ResetPassword from './pages/auth/ResetPassword';
 
-// Admin
-import AdminUsuarios from './pages/admin/Usuarios';
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Account = lazy(() => import('./pages/Account'));
+const Bible = lazy(() => import('./pages/Bible'));
+const Estudos = lazy(() => import('./pages/Estudos'));
+const Exegese = lazy(() => import('./pages/Exegese'));
+const Interpretacao = lazy(() => import('./pages/Interpretacao'));
+const Library = lazy(() => import('./pages/Library'));
+const Membership = lazy(() => import('./pages/Membership'));
+const StudyProfile = lazy(() => import('./pages/StudyProfile'));
+const Termos = lazy(() => import('./pages/Termos'));
+const Privacidade = lazy(() => import('./pages/Privacidade'));
+const ForgotPassword = lazy(() => import('./pages/auth/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/auth/ResetPassword'));
+const AdminUsuarios = lazy(() => import('./pages/admin/Usuarios'));
+
+/** Placeholder enquanto o pedaço da rota chega. Discreto, na cor da marca. */
+function CarregandoRota() {
+  return (
+    <div className="h-[60vh] w-full flex items-center justify-center">
+      <p className="text-[var(--cor-dourado)] font-['Manrope'] tracking-widest animate-pulse">
+        Carregando...
+      </p>
+    </div>
+  );
+}
 
 const APP_HOME = '/inicio';
 
@@ -61,6 +74,7 @@ function App() {
       <AdminProvider>
       <ToastProvider>
         <BrowserRouter>
+          <Suspense fallback={<CarregandoRota />}>
           <Routes>
             {/* Página pública (Landing), indexável — visitante não logado vê o site institucional. */}
             <Route path="/" element={<HomeRoute />} />
@@ -106,6 +120,7 @@ function App() {
               </Route>
             </Route>
           </Routes>
+          </Suspense>
         </BrowserRouter>
       </ToastProvider>
       </AdminProvider>

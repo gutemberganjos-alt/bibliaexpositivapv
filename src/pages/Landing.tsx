@@ -50,7 +50,7 @@ export default function Landing() {
       <header className="landing-header">
         <div className="landing-header-inner">
           <span className="landing-logo-wrap">
-            <img src="/icons/icon-192.png" alt="Bíblia Expositiva" className="landing-logo-img" />
+            <img src="/icons/logo-64.png" alt="Bíblia Expositiva" className="landing-logo-img" />
             <span className="landing-logo font-['Playfair_Display']">Bíblia <b>Expositiva</b></span>
           </span>
           <nav className="landing-nav">
