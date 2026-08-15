@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, AlertCircle, User, KeyRound, MailCheck } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, AlertCircle, User, KeyRound, MailCheck, Phone } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import GoogleIcon from '../../components/GoogleIcon';
 
 export default function Register() {
   const [name, setName] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -38,8 +39,12 @@ export default function Register() {
     e.preventDefault();
     setError('');
 
-    if (!name || !email || !password || !confirmPassword) {
+    if (!name || !whatsapp || !email || !password || !confirmPassword) {
       setError('Preencha todos os campos.');
+      return;
+    }
+    if (whatsapp.replace(/\D/g, '').length < 10) {
+      setError('Informe um WhatsApp válido, com DDD.');
       return;
     }
     if (password.length < 8) {
@@ -59,6 +64,7 @@ export default function Register() {
         options: {
           data: {
             full_name: name,
+            whatsapp: whatsapp.trim(),
           }
         }
       });
@@ -121,6 +127,21 @@ export default function Register() {
                 placeholder="Seu nome"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block font-['Manrope'] text-sm tracking-wider text-[var(--cor-texto-medio)] mb-2">WhatsApp</label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--cor-texto-dim)]" size={18} />
+              <input
+                type="tel"
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(e.target.value)}
+                className="input-base w-full pl-10 pr-4 py-3 text-sm"
+                placeholder="(11) 91234-5678"
+              />
+            </div>
+            <p className="text-xs mt-1 text-[var(--cor-texto-dim)]">Necessário para liberar as gerações gratuitas.</p>
           </div>
 
           <div>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Loader2, AlertCircle, Sparkles, Copy, RotateCcw, BookmarkPlus, Check, ClipboardList, Lock } from 'lucide-react';
 import {
   MODOS,
@@ -57,6 +58,7 @@ export default function StudyGenerator({
 
   const { showToast } = useToast();
   const { active, quota, refreshQuota } = useSubscription();
+  const navigate = useNavigate();
 
   // Contador do teste grátis. Só aparece para quem ainda não assinou.
   const emTeste = !active && quota?.trial === true;
@@ -118,6 +120,13 @@ export default function StudyGenerator({
           if (code === 'trial_exhausted') {
             setPaywall(true);
             void refreshQuota();
+          } else if (code === 'device_trial_limit') {
+            showToast(msg, 'error');
+            setPaywall(true);
+            void refreshQuota();
+          } else if (code === 'whatsapp_required') {
+            showToast(msg, 'error');
+            navigate('/conta');
           } else {
             setError(msg);
           }

@@ -1,11 +1,12 @@
-import { useState } from 'react';
-import { LogOut, User, Mail, Shield, CreditCard, ChevronRight, GraduationCap, XCircle, Loader2, ShieldCheck } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { LogOut, User, Mail, Phone, Shield, CreditCard, ChevronRight, GraduationCap, XCircle, Loader2, ShieldCheck, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
 import { useAdmin } from '../contexts/AdminContext';
 import { cancelSubscription } from '../lib/subscription';
+import { supabase } from '../lib/supabase';
 
 const TIER_LABEL: Record<string, string> = {
   free: 'Sem assinatura ativa',
@@ -28,9 +29,37 @@ export default function Account() {
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [busy, setBusy] = useState<'cancel' | null>(null);
+  const [whatsapp, setWhatsapp] = useState('');
+  const [whatsappSalvo, setWhatsappSalvo] = useState(true);
+  const [salvandoWhatsapp, setSalvandoWhatsapp] = useState(false);
 
   const userName = user?.user_metadata?.full_name || 'Irmão(ã) em Cristo';
   const userEmail = user?.email || 'usuario@email.com';
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('profiles').select('whatsapp').eq('id', user.id).single()
+      .then(({ data }) => setWhatsapp(data?.whatsapp ?? ''));
+  }, [user]);
+
+  async function handleSalvarWhatsapp() {
+    if (!user) return;
+    if (whatsapp.replace(/\D/g, '').length < 10) {
+      showToast('Informe um WhatsApp válido, com DDD.', 'error');
+      return;
+    }
+    setSalvandoWhatsapp(true);
+    try {
+      const { error } = await supabase.from('profiles').update({ whatsapp: whatsapp.trim() }).eq('id', user.id);
+      if (error) throw error;
+      setWhatsappSalvo(true);
+      showToast('WhatsApp salvo. Suas gerações gratuitas já estão liberadas.', 'success');
+    } catch {
+      showToast('Não foi possível salvar. Tente novamente.', 'error');
+    } finally {
+      setSalvandoWhatsapp(false);
+    }
+  }
 
   async function handleCancel() {
     if (!confirm('Deseja mesmo cancelar sua assinatura? Se estiver dentro de 7 dias do primeiro pagamento, o reembolso é automático.')) return;
@@ -69,6 +98,32 @@ export default function Account() {
           <div className="flex items-center gap-3 p-3 bg-[var(--cor-fundo-input)] rounded-md border border-[var(--cor-borda)] overflow-hidden">
             <Mail size={18} className="text-[var(--cor-texto-dim)] shrink-0" />
             <span className="text-[var(--cor-texto-medio)] text-sm truncate">{userEmail}</span>
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2 text-xs text-[var(--cor-texto-dim)] mb-1.5">
+              <Phone size={14} /> WhatsApp
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="tel"
+                value={whatsapp}
+                onChange={(e) => { setWhatsapp(e.target.value); setWhatsappSalvo(false); }}
+                placeholder="(11) 91234-5678"
+                className="input-base flex-1 px-3 py-2.5 text-sm"
+              />
+              <button
+                onClick={handleSalvarWhatsapp}
+                disabled={salvandoWhatsapp || whatsappSalvo}
+                className="btn-secondary px-4 shrink-0 disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {salvandoWhatsapp ? <Loader2 size={16} className="animate-spin" /> : whatsappSalvo ? <Check size={16} /> : null}
+                Salvar
+              </button>
+            </div>
+            {!whatsapp && (
+              <p className="text-xs mt-1.5 text-[var(--cor-erro)]">Necessário para usar as gerações gratuitas.</p>
+            )}
           </div>
         </div>
       </div>

@@ -9,7 +9,7 @@ import { montarPrompt, MODOS, PUBLICOS, SECOES_OBRIGATORIAS } from './prompts.ts
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-seo-token',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-seo-token, x-device-session',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
@@ -74,7 +74,7 @@ interface ResultadoQuota {
   ok: boolean;
   status?: number;
   error?: string;
-  code?: 'trial_exhausted' | 'quota_exhausted' | 'auth' | 'erro' | 'device_session_replaced';
+  code?: 'trial_exhausted' | 'quota_exhausted' | 'auth' | 'erro' | 'device_session_replaced' | 'whatsapp_required' | 'device_trial_limit';
   uid?: string;
   /** Situação da franquia, devolvida ao app para atualizar o contador na tela. */
   quota?: { trial: boolean; used: number; limit: number; remaining: number };
@@ -118,6 +118,35 @@ async function verificarAssinaturaEQuota(req: Request): Promise<ResultadoQuota> 
             error: 'Sua conta foi acessada em outro dispositivo. Faça login novamente.',
           };
         }
+      }
+    }
+
+    // 1.6) Teste grátis: exige WhatsApp e limita por APARELHO (não só por conta) —
+    // evita quem cria vários e-mails só pra repetir as 3 gerações grátis.
+    // Assinante ativo é liberado direto dentro da própria função (checa de novo).
+    const gate = await fetch(`${url}/rest/v1/rpc/check_trial_gate`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', apikey: serviceKey, authorization: `Bearer ${serviceKey}` },
+      body: JSON.stringify({ p_user_id: uid, p_device_id: deviceId || null, p_limit: TESTE_GRATIS_LIMITE }),
+    });
+    if (gate.ok) {
+      const gateRows = await gate.json();
+      const gateRow = Array.isArray(gateRows) ? gateRows[0] : gateRows;
+      if (gateRow?.allowed === false) {
+        if (gateRow.code === 'whatsapp_required') {
+          return {
+            ok: false,
+            status: 400,
+            code: 'whatsapp_required',
+            error: 'Pra usar as gerações gratuitas, informe seu WhatsApp na sua conta.',
+          };
+        }
+        return {
+          ok: false,
+          status: 402,
+          code: 'device_trial_limit',
+          error: 'Este aparelho já usou o teste grátis em outra conta. Assine para continuar gerando.',
+        };
       }
     }
 
