@@ -54,7 +54,7 @@ const ENFORCE_SUBSCRIPTION = (Deno.env.get('ENFORCE_SUBSCRIPTION') ?? 'true') !=
  * Limites de assinante (na função consume_quota): premium=30/mês, church=150/mês.
  * Quando ENFORCE_SUBSCRIPTION está desligado, sempre libera (dev/testes).
  */
-const TESTE_GRATIS_LIMITE = 3;
+const TESTE_GRATIS_LIMITE = 2;
 /** Devolve a franquia consumida quando a geração falha (não cobra do assinante por erro nosso). */
 async function devolverQuota(uid: string | null): Promise<void> {
   if (!uid || !ENFORCE_SUBSCRIPTION) return;

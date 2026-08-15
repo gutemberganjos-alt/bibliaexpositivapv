@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 
 /** Quantas gerações a pessoa ganha para testar antes de assinar. */
-export const TESTE_GRATIS_LIMITE = 3;
+export const TESTE_GRATIS_LIMITE = 2;
 
 export interface QuotaStatus {
   /** Tem assinatura ativa (ou faz parte de uma igreja assinante). */
