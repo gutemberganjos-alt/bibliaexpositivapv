@@ -16,6 +16,7 @@ export interface AdminProfileRow {
   id: string;
   full_name: string | null;
   email: string | null;
+  whatsapp: string | null;
   role: string | null;
   subscription_tier: string | null;
   church_id: string | null;
@@ -55,7 +56,7 @@ export async function fetchAdminUsers(): Promise<AdminUserRow[]> {
     await Promise.all([
       supabase
         .from('profiles')
-        .select('id, full_name, email, role, subscription_tier, church_id, created_at')
+        .select('id, full_name, email, whatsapp, role, subscription_tier, church_id, created_at')
         .order('created_at', { ascending: false }),
       supabase
         .from('subscriptions')

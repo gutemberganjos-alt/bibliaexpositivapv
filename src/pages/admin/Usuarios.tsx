@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Loader2, Search, ShieldCheck, Users, UserPlus, CreditCard, Gift, XCircle, X } from 'lucide-react';
+import { ArrowLeft, Loader2, Search, ShieldCheck, Users, UserPlus, CreditCard, Gift, XCircle, X, Phone } from 'lucide-react';
 import { fetchAdminUsers, adminGrantAccess, adminCancelSubscription } from '../../lib/admin';
 import type { AdminUserRow, AdminTier } from '../../lib/admin';
 import { useToast } from '../../contexts/ToastContext';
@@ -87,7 +87,9 @@ export default function AdminUsuarios() {
     const q = busca.trim().toLowerCase();
     if (!q) return usuarios;
     return usuarios.filter((u) =>
-      (u.full_name ?? '').toLowerCase().includes(q) || (u.email ?? '').toLowerCase().includes(q));
+      (u.full_name ?? '').toLowerCase().includes(q)
+      || (u.email ?? '').toLowerCase().includes(q)
+      || (u.whatsapp ?? '').toLowerCase().includes(q));
   }, [usuarios, busca]);
 
   const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -136,7 +138,7 @@ export default function AdminUsuarios() {
             <input
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
-              placeholder="Buscar por nome ou e-mail…"
+              placeholder="Buscar por nome, e-mail ou WhatsApp…"
               className="input-base w-full pl-9 pr-4 py-2.5 text-sm"
             />
           </div>
@@ -153,6 +155,17 @@ export default function AdminUsuarios() {
                     <div className="min-w-0">
                       <p className="text-[var(--cor-pergaminho)] font-medium truncate">{u.full_name || '(sem nome)'}</p>
                       <p className="text-xs text-[var(--cor-texto-dim)] truncate">{u.email}</p>
+                      {u.whatsapp && (
+                        <a
+                          href={`https://wa.me/${u.whatsapp.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1.5 text-xs text-[var(--cor-sucesso)] mt-1 hover:underline"
+                        >
+                          <Phone size={12} /> {u.whatsapp}
+                        </a>
+                      )}
                     </div>
                     <span className={`shrink-0 text-[10px] px-2 py-1 rounded-full border font-['Manrope'] uppercase tracking-wider ${
                       ativa ? 'text-[var(--cor-dourado)] border-[var(--cor-dourado)]/40' : 'text-[var(--cor-texto-dim)] border-[var(--cor-borda)]'
