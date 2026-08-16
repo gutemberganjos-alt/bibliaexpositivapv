@@ -57,6 +57,11 @@
     --cor-oliva:          #7C8B4F;
     --cor-oliva-claro:    #A3B074;
     --cor-oliva-bg:       rgba(124,139,79,0.14);
+    /* Campos de formulário (input/select) dentro de telas escuras (home-dark) —
+       sutis, translúcidos, sobre o card #13294A. */
+    --cor-navy-input:       rgba(255,255,255,.04);
+    --cor-navy-input-borda: rgba(228,190,107,.22);
+    --cor-navy-borda-forte: rgba(228,190,107,.5);
     --raio-card:          18px;
     --raio-btn:           12px;
     --transicao:          all 0.25s ease;
@@ -301,6 +306,22 @@
   color: #8C4A2B;
   background: rgba(140, 74, 43, 0.14);
   border-color: rgba(140, 74, 43, 0.55);
+}
+
+/* Card explicitamente CLARO para o conteúdo gerado (.estudo-conteudo), mesmo
+   quando usado dentro de um contêiner .home-dark — os selos de confiabilidade
+   (.selo-*) foram calibrados para fundo claro e ficam ilegíveis em cartão
+   escuro. Redefine as variáveis herdadas de volta para os valores claros. */
+.estudo-card-claro {
+  background: rgba(255,254,250,0.96);
+  border: 1px solid rgba(14,32,56,0.12);
+  border-radius: var(--raio-card);
+  box-shadow: 0 8px 26px rgba(45,61,52,.08);
+  --cor-pergaminho: #22262E;
+  --cor-pergaminho-dim: #5E6672;
+  --cor-dourado: #0E2038;
+  --cor-dourado-claro: #1E3B63;
+  --cor-dourado-dim: #5C6B82;
 }
 
 /* ============================================================
@@ -712,6 +733,28 @@
    ============================================================ */
 .home-dark { display: block; width: 100%; min-height: 100%; color: var(--cor-navy-texto);
   background: radial-gradient(ellipse 80% 45% at 50% -8%, rgba(228,190,107,.14), transparent 60%), linear-gradient(180deg, #0E2038 0%, #0A1728 100%); }
+
+/* Redefine as variáveis do tema claro para os equivalentes do tema escuro
+   DENTRO do escopo .home-dark. Qualquer componente que já usa var(--cor-dourado),
+   var(--cor-borda), var(--cor-fundo-input) etc. (Estudos, Bíblia, botões
+   .btn-secondary, .input-base…) herda automaticamente as cores certas quando
+   está dentro de um contêiner .home-dark — sem precisar reescrever cada
+   classe Tailwind uma a uma nesses componentes. */
+.home-dark {
+  --cor-dourado:        var(--cor-ouro-claro);
+  --cor-dourado-claro:  var(--cor-ouro-claro);
+  --cor-dourado-dim:    var(--cor-ouro-claro);
+  --cor-dourado-bg:     var(--cor-ouro-bg);
+  --cor-pergaminho:     var(--cor-navy-texto);
+  --cor-pergaminho-dim: var(--cor-navy-texto-dim);
+  --cor-texto-dim:      var(--cor-navy-texto-dim);
+  --cor-texto-medio:    var(--cor-navy-texto);
+  --cor-borda:          var(--cor-navy-borda);
+  --cor-borda-hover:    var(--cor-navy-borda-forte);
+  --cor-fundo-card:     var(--cor-navy-2);
+  --cor-fundo-hover:    rgba(255,255,255,.05);
+  --cor-fundo-input:    rgba(255,255,255,.04);
+}
 .home-dark .eyebrow { color: var(--cor-ouro-claro); }
 .home-dark .dashboard-title { color: #FFFFFF; }
 .home-dark .dashboard-title b, .home-dark .dashboard-title-accent { color: var(--cor-ouro-claro); font-weight: inherit; }

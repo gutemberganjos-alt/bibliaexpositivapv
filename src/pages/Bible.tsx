@@ -200,11 +200,12 @@ export default function Bible() {
   const hasNext = selectedChapter < selectedBook.chapters || BIBLE_BOOKS.findIndex(b => b.name === selectedBook.name) < BIBLE_BOOKS.length - 1;
 
   return (
+    <div className="home-dark" style={{ background: 'radial-gradient(ellipse 80% 45% at 50% -8%, rgba(228,190,107,.14), transparent 60%), linear-gradient(180deg, #0E2038 0%, #0A1728 100%)' }}>
     <div className="flex flex-col min-h-screen pb-20">
       {/* Sticky Controls */}
-      <div className="sticky top-0 z-40 bg-[var(--cor-fundo-card)] border-b border-[var(--cor-dourado)] px-4 py-3 shadow-md">
-        <div className="flex flex-wrap gap-2 md:gap-4 max-w-4xl mx-auto items-center">
-          
+      <div className="sticky top-0 z-40 bg-[var(--cor-fundo-card)] border-b border-[var(--cor-dourado)] px-4 py-3.5 shadow-md">
+        <div className="flex flex-wrap gap-2.5 md:gap-4 max-w-6xl mx-auto items-center">
+
           <div className="relative flex-1 min-w-[120px]">
             <select 
               value={selectedBook.name}
@@ -254,9 +255,9 @@ export default function Bible() {
       </div>
 
       {/* Reading Area */}
-      <div 
-        ref={readingAreaRef} 
-        className="flex-grow w-full max-w-4xl mx-auto p-4 md:py-6 md:px-8 relative"
+      <div
+        ref={readingAreaRef}
+        className="flex-grow w-full max-w-6xl mx-auto p-4 md:py-8 md:px-8 relative"
       >
         {loading ? (
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
@@ -270,8 +271,8 @@ export default function Bible() {
             <button onClick={fetchChapter} className="btn-secondary">Tentar novamente</button>
           </div>
         ) : (
-          <div className="space-y-4">
-            <h1 className="font-['Manrope'] text-2xl text-[var(--cor-dourado-claro)] text-center mb-8 border-b border-[var(--cor-borda)] pb-4 flex items-center justify-center gap-2.5">
+          <div className="card p-5 md:p-8 space-y-4">
+            <h1 className="font-['Manrope'] text-3xl text-[var(--cor-dourado-claro)] text-center mb-8 border-b border-[var(--cor-borda)] pb-5 flex items-center justify-center gap-2.5">
               {selectedBook.name} {selectedChapter}
               <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border border-[var(--cor-dourado)] text-[var(--cor-dourado)] align-middle">
                 {TRADUCAO_ATUAL}
@@ -279,12 +280,12 @@ export default function Bible() {
             </h1>
 
             {verses.map((verse, index) => (
-              <div 
-                key={verse.verse} 
-                className={`verse-container relative cursor-pointer p-2 rounded transition-colors ${selectedVerseIndex === index ? 'bg-[var(--cor-dourado-bg)]' : 'hover:bg-[rgba(255,255,255,0.02)]'}`}
+              <div
+                key={verse.verse}
+                className={`verse-container relative cursor-pointer p-2.5 rounded-lg transition-colors ${selectedVerseIndex === index ? 'bg-[var(--cor-dourado-bg)]' : 'hover:bg-[rgba(255,255,255,0.04)]'}`}
                 onClick={(e) => handleVerseClick(e, index)}
               >
-                <p className="text-[1.1rem] leading-loose text-[var(--cor-pergaminho)]">
+                <p className="text-[1.15rem] leading-loose text-[var(--cor-pergaminho)]">
                   <sup className="font-['Manrope'] text-[0.65rem] text-[var(--cor-dourado-dim)] mr-2 font-bold select-none">{verse.verse}</sup>
                   {verse.text}
                 </p>
@@ -293,7 +294,7 @@ export default function Bible() {
 
             {/* Laboratório do Original — aparece ao selecionar um versículo. */}
             {selectedVerseIndex !== null && verses[selectedVerseIndex] && (
-              <div className="mt-6 rounded-lg border border-[var(--cor-dourado)] bg-[var(--cor-fundo-card)] p-4 md:p-5">
+              <div className="mt-6 rounded-xl border border-[var(--cor-dourado)] bg-[rgba(255,255,255,.03)] p-5 md:p-6">
                 <div className="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-[var(--cor-borda)]">
                   <div className="flex items-center gap-2 font-['Manrope'] text-sm font-semibold text-[var(--cor-dourado)]">
                     <Sparkles size={16} />
@@ -435,15 +436,15 @@ export default function Bible() {
 
       {/* Navigation Footer */}
       {!loading && !error && verses.length > 0 && (
-        <div className="w-full max-w-4xl mx-auto px-4 mt-8 pb-8 flex justify-between">
-          <button 
+        <div className="w-full max-w-6xl mx-auto px-4 mt-8 pb-8 flex justify-between">
+          <button
             onClick={prevChapter}
             disabled={!hasPrev}
             className={`btn-secondary flex items-center gap-2 ${!hasPrev ? 'opacity-30 cursor-not-allowed' : ''}`}
           >
             Anterior
           </button>
-          <button 
+          <button
             onClick={nextChapter}
             disabled={!hasNext}
             className={`btn-secondary flex items-center gap-2 ${!hasNext ? 'opacity-30 cursor-not-allowed' : ''}`}
@@ -452,6 +453,7 @@ export default function Bible() {
           </button>
         </div>
       )}
+    </div>
     </div>
   );
 }
