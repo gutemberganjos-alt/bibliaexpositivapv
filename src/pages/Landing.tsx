@@ -1,35 +1,25 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  Search, Layers, BookOpen, Users, Cloud, ArrowRight, Check,
-  ShieldCheck, GraduationCap, Church, Baby, User, Heart, Unlock,
-} from 'lucide-react';
-import PenWriting from '../components/PenWriting';
+import { Sun, Moon } from 'lucide-react';
 import { MODOS } from '../lib/ai-config';
 import { PLANOS } from '../lib/subscription';
+import { TESTE_GRATIS_LIMITE } from '../lib/quota';
 
-const RECURSOS = [
-  { ic: PenWriting, titulo: 'Criação de estudos personalizados', texto: 'Em minutos, com profundidade e relevância.' },
-  { ic: Search, titulo: 'Exegese e contexto bíblico', texto: 'Análises profundas com base nas Escrituras.' },
-  { ic: Layers, titulo: 'Diversos modelos de estudos', texto: 'Devocional, expositivo, temático, indutivo e mais.' },
-  { ic: Users, titulo: 'Para todos os perfis', texto: 'Recursos adaptados para cada fase e chamado.' },
-  { ic: Cloud, titulo: 'Acesse de onde estiver', texto: 'No seu tempo e no seu ritmo, celular ou computador.' },
-];
+type Tema = 'claro' | 'escuro';
 
-const PASSOS = [
-  { titulo: '1. Escolha o formato', texto: 'Devocional, estudo completo, sermão, exegese, curso e mais — 9 formatos para cada necessidade.' },
-  { titulo: '2. Escolha o público', texto: 'Crianças, adolescentes, jovens, igreja, professores, pastores ou teologia acadêmica.' },
-  { titulo: '3. Informe o texto ou tema', texto: 'Uma referência bíblica ou um tema. Nossa Bíblia Digital gera o material completo em segundos, com selos de confiabilidade.' },
-];
+const ICONE_MODO: Record<string, string> = {
+  devocional: '♡',
+  estudo: '▤',
+  sermao: '▭',
+  exegese: '▦',
+  curso: '▣',
+  pergunte_texto: '?',
+  pequeno_grupo: '◎',
+  discipulado: '◈',
+  apologetica: '⛨',
+};
 
-const PERFIS = [
-  { ic: Church, nome: 'Pastores' },
-  { ic: GraduationCap, nome: 'Professores' },
-  { ic: BookOpen, nome: 'Teólogos' },
-  { ic: Users, nome: 'Jovens' },
-  { ic: Users, nome: 'Adolescentes' },
-  { ic: Baby, nome: 'Crianças' },
-  { ic: User, nome: 'Adultos' },
-];
+const PUBLICOS_COUNT = 7; // crianças, adolescentes, jovens, igreja, professores, pastores, teologia
 
 const SELOS = [
   { classe: 'selo-escritura', nome: 'Escritura', texto: 'Direto do texto bíblico.' },
@@ -40,265 +30,314 @@ const SELOS = [
   { classe: 'selo-tradicao', nome: 'Tradição', texto: 'Vem da tradição da igreja, não do texto.' },
 ];
 
-const DESTAQUES_MODOS = MODOS.filter((m) =>
-  ['devocional', 'estudo', 'sermao', 'exegese', 'curso', 'pequeno_grupo'].includes(m.id),
-);
+/** Lê o tema salvo; na primeira visita segue a preferência do sistema. */
+function temaInicial(): Tema {
+  if (typeof window === 'undefined') return 'claro';
+  const salvo = window.localStorage.getItem('bepv-tema');
+  if (salvo === 'claro' || salvo === 'escuro') return salvo;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro';
+}
 
 export default function Landing() {
+  const [tema, setTema] = useState<Tema>(temaInicial);
+
+  useEffect(() => {
+    window.localStorage.setItem('bepv-tema', tema);
+  }, [tema]);
+
   return (
-    <div className="landing-page">
-      <header className="landing-header">
-        <div className="landing-header-inner">
-          <span className="landing-logo-wrap">
-            <img src="/icons/logo-64.png" alt="Bíblia Expositiva" className="landing-logo-img" />
-            <span className="landing-logo font-['Playfair_Display']">Bíblia <b>Expositiva</b></span>
+    <div className="landing-page" data-tema={tema}>
+      <header className="lp-header">
+        <div className="lp-wrap lp-hd">
+          <span className="lp-marca-topo">
+            <img src="/icons/logo-64.png" alt="Bíblia Expositiva" />
+            Bíblia Expositiva
           </span>
-          <nav className="landing-nav">
-            <Link to="/login" className="landing-link">Entrar</Link>
-            <Link to="/cadastro" className="btn-primary landing-cta-small">Criar conta</Link>
+          <nav className="lp-nav">
+            <a href="#como" className="lp-nav-link">Como funciona</a>
+            <a href="#selos" className="lp-nav-link">Selos</a>
+            <a href="#planos" className="lp-nav-link">Planos</a>
+            <Link to="/login" className="lp-nav-link">Entrar</Link>
+            <button
+              type="button"
+              className="lp-tema-btn"
+              aria-label="Alternar tema claro e escuro"
+              title="Alternar tema"
+              onClick={() => setTema((t) => (t === 'escuro' ? 'claro' : 'escuro'))}
+            >
+              {tema === 'escuro' ? <Sun size={19} /> : <Moon size={19} />}
+            </button>
+            <Link to="/cadastro" className="lp-btn lp-btn-o">Começar grátis</Link>
           </nav>
         </div>
       </header>
 
-      <div className="landing-container">
-      <main>
-        {/* Hero */}
-        <section className="landing-hero">
-          <p className="eyebrow mb-3">A PLATAFORMA COMPLETA PARA</p>
-          <h1 className="font-['Playfair_Display'] landing-hero-title">
-            Estudos bíblicos <b>profundos</b> em segundos
-          </h1>
-          <p className="landing-hero-subtitle">
-            Profundidade, clareza e propósito para cada perfil. Escolha o formato, o público e um texto —
-            a Bíblia Expositiva gera o material completo em segundos, com selos de confiabilidade.
-          </p>
-          <div className="flex flex-wrap gap-3 mt-6">
-            <Link to="/cadastro" className="btn-primary flex items-center gap-2">
-              <PenWriting size={17} /> Criar conta grátis
-            </Link>
-            <Link to="/login" className="btn-secondary flex items-center gap-2">
-              Já tenho conta <ArrowRight size={15} />
-            </Link>
-          </div>
-          <span className="landing-hero-seal"><ShieldCheck size={14} /> Base bíblica · Conteúdo confiável</span>
-        </section>
-
-        {/* Recursos */}
-        <section className="landing-section">
-          <p className="eyebrow mb-2 text-center">RECURSOS</p>
-          <h2 className="landing-section-title font-['Playfair_Display'] text-center mb-8">Tudo para ensinar a Palavra com excelência</h2>
-          <div className="landing-features">
-            {RECURSOS.map(({ ic: Ic, titulo, texto }) => (
-              <div key={titulo} className="landing-feature">
-                <Ic size={22} className="landing-feature-ic" />
-                <div>
-                  <h3>{titulo}</h3>
-                  <p>{texto}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Como funciona */}
-        <section className="landing-section">
-          <p className="eyebrow mb-2 text-center">COMO FUNCIONA</p>
-          <h2 className="landing-section-title font-['Playfair_Display'] text-center mb-8">Três passos até o material pronto</h2>
-          <div className="grid md:grid-cols-3 gap-4">
-            {PASSOS.map((p) => (
-              <div key={p.titulo} className="card p-5">
-                <h3 className="text-base mb-2">{p.titulo}</h3>
-                <p className="text-sm">{p.texto}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Formatos */}
-        <section className="landing-section">
-          <p className="eyebrow mb-2 text-center">FORMATOS</p>
-          <h2 className="landing-section-title font-['Playfair_Display'] text-center mb-8">Um material para cada momento</h2>
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {DESTAQUES_MODOS.map((m) => (
-              <div key={m.id} className="card p-4">
-                <h3 className="text-sm mb-1">{m.nome}</h3>
-                <p className="text-xs">{m.descricao}</p>
-              </div>
-            ))}
-          </div>
-          <p className="text-center text-xs landing-muted mt-4">
-            + Pergunte ao Texto, Discipulado e Apologética — {MODOS.length} formatos ao todo.
-          </p>
-        </section>
-
-        {/* Para quem */}
-        <section className="landing-section">
-          <p className="eyebrow mb-2 text-center">PARA QUEM É A BÍBLIA EXPOSITIVA</p>
-          <h2 className="landing-section-title font-['Playfair_Display'] text-center mb-8">Feita para cada chamado</h2>
-          <div className="landing-perfis">
-            {PERFIS.map(({ ic: Ic, nome }) => (
-              <span key={nome} className="landing-perfil"><Ic size={16} /> {nome}</span>
-            ))}
-          </div>
-        </section>
-
-        {/* Selos de confiabilidade (painel claro = mostra a leitura) */}
-        <section className="landing-section landing-section-alt">
-          <p className="eyebrow mb-2 text-center">DIFERENCIAL</p>
-          <h2 className="landing-section-title font-['Playfair_Display'] text-center mb-3">Selos de confiabilidade em cada afirmação</h2>
-          <p className="text-center text-sm max-w-xl mx-auto mb-8">
-            Cada trecho do material gerado é classificado: o que vem direto da Escritura, o que é consenso entre
-            estudiosos, o que é interpretação debatida, hipótese ou tradição — para você saber exatamente o peso de cada palavra.
-          </p>
-
-          {/* Amostra real: explicar os selos não convence: ver os selos aplicados, sim. */}
-          <div className="landing-mockup">
-            <div className="landing-mockup-head">
-              <b>Romanos 8:28 — Estudo Bíblico</b>
-              <span>Gerado em 34s</span>
+      {/* Hero */}
+      <section className="lp-hero">
+        <div className="lp-wrap lp-hero-in">
+          <div>
+            <p className="eyebrow">Preparação bíblica</p>
+            <h1>Do texto ao púlpito, <em>sem atalhos</em></h1>
+            <p className="lp-lead">Escolha o formato, o público e a passagem. O material completo fica pronto
+              em segundos — e cada afirmação vem marcada pela origem, para você saber o que é
+              Escritura e o que é herança da igreja.</p>
+            <div className="lp-acoes">
+              <Link to="/cadastro" className="lp-btn lp-btn-o">Preparar meu primeiro material</Link>
+              <a href="#selos" className="lp-btn lp-btn-l">Ver uma amostra</a>
             </div>
-            <div className="landing-mockup-body">
-              <p>
-                <span className="selo selo-escritura">Escritura</span>
-                “E sabemos que todas as coisas cooperam para o bem daqueles que amam a Deus” (Romanos 8:28).
-              </p>
-              <p>
-                <span className="selo selo-consenso">Consenso</span>
-                O “bem” do versículo é lido, pelo contexto imediato, como a conformação ao caráter de Cristo — o
-                versículo 29 explica o 28.
-              </p>
-              <p>
-                <span className="selo selo-aceita">Interpretação aceita</span>
-                “Aqueles que amam a Deus” costuma ser entendido como equivalente aos “chamados segundo o seu
-                propósito”, na própria frase.
-              </p>
-              <p>
-                <span className="selo selo-debatida">Debatida</span>
-                O alcance de “predestinou”, no versículo 29, divide leituras reformadas e arminianas há séculos.
-              </p>
-              <p>
-                <span className="selo selo-hipotese">Hipótese</span>
-                Há quem proponha que Paulo ecoa aqui a linguagem de Gênesis 50:20. A ligação é plausível, mas o
-                texto não a torna explícita.
-              </p>
-              <p>
-                <span className="selo selo-tradicao">Tradição</span>
-                A leitura agostiniana moldou boa parte da recepção ocidental da passagem — é herança da igreja,
-                não afirmação do próprio versículo.
-              </p>
-            </div>
-            <p className="landing-mockup-nota">
-              Amostra ilustrativa. Todo material gerado sai classificado assim, trecho por trecho.
+            <p className="lp-provas">
+              <span><b>{TESTE_GRATIS_LIMITE}</b> materiais gratuitos</span>
+              <span>Sem cartão para começar</span>
+              <span>Reembolso em 7 dias</span>
             </p>
           </div>
+          <div className="lp-tela">
+            <div className="lp-tela-cab">
+              <span className="lado"><i /><b>Bíblia Expositiva</b></span>
+              <span className="pts"><span /><span /><span /></span>
+            </div>
+            <div className="lp-tela-corpo">
+              <div className="lp-grade9">
+                {MODOS.map((m) => (
+                  <div key={m.id} className="lp-tile">
+                    <div className="ic">{ICONE_MODO[m.id] ?? '•'}</div>
+                    <span>{m.nome}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3 max-w-3xl mx-auto">
+      {/* Passo 1 — como funciona */}
+      <section className="lp-faixa lp-f-a" id="como">
+        <div className="lp-wrap lp-dupla">
+          <div className="txt">
+            <p className="eyebrow">Passo 1</p>
+            <h2>Três escolhas e a passagem. Só isso.</h2>
+            <p className="lp-lead">Nada de prompt, nada de configuração. Você diz o formato, para quem vai
+              ensinar e qual texto. O resto é com a ferramenta.</p>
+            <ul className="lp-bullets">
+              <li><span className="lp-check">✓</span><span><b>{MODOS.length} formatos</b> — do devocional de 5 minutos à exegese acadêmica.</span></li>
+              <li><span className="lp-check">✓</span><span><b>{PUBLICOS_COUNT} públicos</b> — de crianças a teologia acadêmica.</span></li>
+              <li><span className="lp-check">✓</span><span><b>Qualquer passagem</b> — referência bíblica ou tema livre.</span></li>
+            </ul>
+          </div>
+          <div className="lp-tela">
+            <div className="lp-tela-cab"><span className="lado"><i /><b>Novo material</b></span><span className="pts"><span /><span /><span /></span></div>
+            <div className="lp-tela-corpo">
+              <div className="lp-campo" style={{ marginBottom: '.7rem' }}>
+                <div className="lbl">Formato</div>
+                <div className="lp-pills"><span className="lp-pill">Devocional</span><span className="lp-pill on">Sermão</span><span className="lp-pill">Exegese</span></div>
+                <div className="lbl">Público</div>
+                <div className="lp-pills"><span className="lp-pill on">Igreja</span><span className="lp-pill">Professores</span><span className="lp-pill">Jovens</span></div>
+              </div>
+              <div className="lp-campo">
+                <div className="lbl">Texto, tema ou referência</div>
+                <div style={{ color: '#E8EEF6', fontSize: '.94rem', fontFamily: "'Playfair Display', serif" }}>Romanos 8:28</div>
+              </div>
+              <div className="lp-botao-falso">Clique aqui para preparar seu material</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Selos de confiabilidade */}
+      <section className="lp-faixa lp-f-b" id="selos">
+        <div className="lp-wrap">
+          <div className="lp-dupla inv">
+            <div className="txt">
+              <p className="eyebrow">O diferencial</p>
+              <h2>Cada frase declara de onde veio</h2>
+              <p className="lp-lead">O erro no ensino quase nunca é má-fé. É repetir, com a autoridade de
+                quem cita a Escritura, o que era só tradição herdada. Aqui isso fica visível antes
+                de você ensinar.</p>
+              <ul className="lp-bullets">
+                <li><span className="lp-check">✓</span><span>Classificação aplicada <b>parágrafo a parágrafo</b>.</span></li>
+                <li><span className="lp-check">✓</span><span>Você <b>vê a divergência</b> antes da pergunta do aluno.</span></li>
+                <li><span className="lp-check">✓</span><span>Dá para <b>ensinar com honestidade</b> sobre o que ainda é discutido.</span></li>
+              </ul>
+            </div>
+            <div className="lp-doc">
+              <div className="lp-doc-cab"><b>Romanos 8:28 — Sermão</b><span>Amostra</span></div>
+              <div className="lp-doc-corpo">
+                <p><span className="selo selo-escritura">Escritura</span>“E sabemos que todas as coisas cooperam para o bem daqueles que amam a Deus” (Romanos 8:28).</p>
+                <p><span className="selo selo-consenso">Consenso</span>O “bem” é lido, pelo contexto imediato, como a conformação ao caráter de Cristo — o versículo 29 explica o 28.</p>
+                <p><span className="selo selo-aceita">Interpretação aceita</span>“Aqueles que amam a Deus” costuma ser entendido como equivalente aos “chamados segundo o seu propósito”.</p>
+                <p><span className="selo selo-debatida">Debatida</span>O alcance de “predestinou”, no versículo 29, divide leituras reformadas e arminianas há séculos.</p>
+                <p><span className="selo selo-hipotese">Hipótese</span>Há quem proponha que Paulo ecoa Gênesis 50:20. Plausível, mas o texto não torna explícito.</p>
+                <p><span className="selo selo-tradicao">Tradição</span>A leitura agostiniana moldou a recepção ocidental — herança da igreja, não afirmação do versículo.</p>
+              </div>
+            </div>
+          </div>
+          <div className="lp-selos6">
             {SELOS.map((s) => (
-              <div key={s.classe} className="landing-selo-card">
+              <div key={s.classe} className="lp-selo-card">
                 <span className={`selo ${s.classe}`}>{s.nome}</span>
-                <p className="text-xs mt-2">{s.texto}</p>
+                <p>{s.texto}</p>
               </div>
             ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Planos */}
-        <section className="landing-section" id="planos">
-          <p className="eyebrow mb-2 text-center">PLANOS</p>
-          <h2 className="landing-section-title font-['Playfair_Display'] text-center mb-8">Ferramentas sérias para ensinar a Palavra</h2>
-          <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto">
-            <article className="plan-card card p-6 border-[var(--cor-ouro)]">
-              <span className="inline-block text-[10px] font-bold tracking-widest uppercase text-[var(--cor-ouro)] bg-[#c9962e24] px-2 py-1 rounded-full mb-3">
-                Sem fidelidade
-              </span>
-              <Unlock size={23} className="landing-feature-ic mb-4" />
-              <p className="eyebrow">{PLANOS.avulso.nome.toUpperCase()}</p>
-              <h3 className="text-lg mt-1 mb-2">Quer testar sem compromisso?</h3>
-              <p className="text-2xl font-['Playfair_Display'] landing-preco">
-                {PLANOS.avulso.precoLabel}
-                <span className="text-sm font-sans landing-muted"> {PLANOS.avulso.ciclo}</span>
-                <span className="block text-xs font-sans landing-muted mt-1">Cobrança única, não renova sozinho</span>
-              </p>
-              <p className="text-xs font-sans landing-muted mt-2">Até {PLANOS.avulso.limiteMensal} gerações durante os 30 dias</p>
-              <Link to="/cadastro" className="btn-primary w-full mt-5 flex items-center justify-center gap-2">
-                Usar por 30 dias
-              </Link>
-            </article>
-            <article className="plan-card card p-6">
-              <GraduationCap size={23} className="landing-feature-ic mb-4" />
-              <p className="eyebrow">{PLANOS.individual.nome.toUpperCase()}</p>
-              <h3 className="text-lg mt-1 mb-2">Para quem estuda, ensina e ministra.</h3>
-              <p className="text-2xl font-['Playfair_Display'] landing-preco">
-                {PLANOS.individual.precoLabel}
-                <span className="text-sm font-sans landing-muted"> {PLANOS.individual.ciclo}</span>
-                <span className="block text-xs font-sans landing-muted mt-1">ou {PLANOS.individual.precos.ANUAL.precoLabel} por ano</span>
-              </p>
-              <p className="text-xs font-sans landing-muted mt-2">Até {PLANOS.individual.limiteMensal} gerações por mês</p>
-              <Link to="/cadastro" className="btn-primary w-full mt-5 flex items-center justify-center gap-2">
-                Assinar plano individual
-              </Link>
-            </article>
-            <article className="plan-card plan-card-featured card p-6">
-              <Church size={23} className="landing-feature-ic mb-4" />
-              <p className="eyebrow">{PLANOS.igreja.nome.toUpperCase()}</p>
-              <h3 className="text-lg mt-1 mb-2">Para equipes que servem e formam pessoas.</h3>
-              <p className="text-2xl font-['Playfair_Display'] landing-preco">
-                {PLANOS.igreja.precoLabel}
-                <span className="text-sm font-sans landing-muted"> {PLANOS.igreja.ciclo}</span>
-                <span className="block text-xs font-sans landing-muted mt-1">ou {PLANOS.igreja.precos.ANUAL.precoLabel} por ano</span>
-              </p>
-              <p className="text-xs font-sans landing-muted mt-2">Até {PLANOS.igreja.limiteMensal} gerações por mês</p>
-              <Link to="/cadastro" className="btn-primary w-full mt-5 flex items-center justify-center gap-2">
-                Assinar plano igreja
-              </Link>
-            </article>
+      {/* Onde você prepara — celular */}
+      <section className="lp-faixa lp-f-esc">
+        <div className="lp-wrap">
+          <div style={{ maxWidth: '44rem' }}>
+            <p className="eyebrow">Onde você prepara</p>
+            <h2 style={{ fontSize: '1.7rem', margin: '.75rem 0 .875rem' }}>Na madrugada de sábado, no celular, sem computador por perto</h2>
+            <p className="lp-lead">A mesma ferramenta na tela pequena: a grade vira duas colunas e o
+              material continua legível para ler no púlpito.</p>
           </div>
-          <ul className="landing-benefits-list">
-            <li><Check size={15} /> Biblioteca pessoal e kit de aula</li>
-            <li><Check size={15} /> Conteúdo reutilizável sem nova geração</li>
-            <li><Check size={15} /> Experiência completa em celular, tablet e computador</li>
-          </ul>
-          <p className="membership-trust"><ShieldCheck size={15} /> Cobrança segura via PIX ou cartão. Cancele quando quiser nos planos Individual e Igreja — reembolso integral em até 7 dias. No plano Avulso não tem nada para cancelar.</p>
-        </section>
-
-        {/* Confiança */}
-        <section className="landing-section">
-          <div className="landing-trust">
-            <span className="landing-trust-item"><BookOpen size={20} /> <span><b>Fundamentado</b> na Verdade</span></span>
-            <span className="landing-trust-item"><Heart size={20} /> <span><b>Aplicável</b> à Vida</span></span>
-            <span className="landing-trust-item"><Users size={20} /> <span><b>Transforma</b> Gerações</span></span>
+          <div className="lp-trio">
+            <div>
+              <div className="lp-mob">
+                <div className="lp-tela-cab"><span className="lado"><i /><b>Bíblia Expositiva</b></span></div>
+                <div className="lp-tela-corpo"><div className="lp-grade9">
+                  {MODOS.slice(0, 6).map((m) => (
+                    <div key={m.id} className="lp-tile"><div className="ic">{ICONE_MODO[m.id] ?? '•'}</div><span>{m.nome}</span></div>
+                  ))}
+                </div></div>
+              </div>
+              <div className="txt"><b>Escolha o formato</b><span>{MODOS.length} opções, dois toques.</span></div>
+            </div>
+            <div>
+              <div className="lp-mob">
+                <div className="lp-tela-cab"><span className="lado"><i /><b>Novo material</b></span></div>
+                <div className="lp-tela-corpo">
+                  <div className="lp-campo"><div className="lbl">Referência</div>
+                    <div style={{ color: '#E8EEF6', fontFamily: "'Playfair Display', serif", fontSize: '.84rem' }}>Romanos 8:28</div></div>
+                  <div className="lp-botao-falso" style={{ fontSize: '.68rem' }}>Preparar meu material</div>
+                  <div style={{ marginTop: '.7rem', height: 5, borderRadius: 9, background: 'rgba(228,190,107,.20)', overflow: 'hidden' }}>
+                    <div style={{ width: '50%', height: '100%', background: '#C79A3E' }} />
+                  </div>
+                  <div style={{ textAlign: 'center', color: '#A9B6C8', fontSize: '.625rem', marginTop: '.375rem' }}>1 de {TESTE_GRATIS_LIMITE} gratuitas usadas</div>
+                </div>
+              </div>
+              <div className="txt"><b>Gere em segundos</b><span>E veja quanto resta do teste.</span></div>
+            </div>
+            <div>
+              <div className="lp-mob">
+                <div className="lp-tela-cab"><span className="lado"><i /><b>Sermão</b></span></div>
+                <div className="lp-tela-corpo" style={{ background: '#F8F6F0', padding: '.75rem' }}>
+                  <p style={{ font: "600 .75rem/1.3 'Playfair Display', serif", color: '#18202C', marginBottom: '.56rem' }}>Romanos 8:28</p>
+                  <p style={{ fontSize: '.66rem', lineHeight: 1.6, fontFamily: "'Literata', serif", color: '#18202C', marginBottom: '.5rem' }}><span className="selo selo-escritura" style={{ fontSize: '.5rem' }}>Escritura</span> “Todas as coisas cooperam para o bem…”</p>
+                  <p style={{ fontSize: '.66rem', lineHeight: 1.6, fontFamily: "'Literata', serif", color: '#18202C', marginBottom: '.5rem' }}><span className="selo selo-consenso" style={{ fontSize: '.5rem' }}>Consenso</span> O “bem” é a conformação a Cristo.</p>
+                  <p style={{ fontSize: '.66rem', lineHeight: 1.6, fontFamily: "'Literata', serif", color: '#18202C' }}><span className="selo selo-debatida" style={{ fontSize: '.5rem' }}>Debatida</span> O alcance de “predestinou” divide leituras.</p>
+                </div>
+              </div>
+              <div className="txt"><b>Leia com os selos</b><span>Pronto para o púlpito.</span></div>
+            </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* CTA final */}
-        <section className="landing-section text-center">
-          <h2 className="landing-section-title font-['Playfair_Display'] mb-4">Comece seu próximo estudo agora</h2>
-          <Link to="/cadastro" className="btn-primary inline-flex items-center gap-2">
-            <PenWriting size={17} /> Criar conta grátis
-          </Link>
-        </section>
-      </main>
+      {/* Quem usa */}
+      <section className="lp-faixa lp-f-a">
+        <div className="lp-wrap">
+          <div style={{ maxWidth: '44rem' }}>
+            <p className="eyebrow">Quem usa</p>
+            <h2 style={{ fontSize: '1.7rem', margin: '.75rem 0 .875rem' }}>Preparado por gente que ensina toda semana</h2>
+            <p className="lp-lead">Pastores, professoras de EBD e líderes de pequeno grupo — cada um no seu
+              tempo e no seu lugar.</p>
+          </div>
+          <div className="lp-pessoas">
+            <div className="lp-pessoa">
+              <img className="lp-foto" src="/fotos/pessoa-1-gabinete.jpg" alt="Pastor preparando o sermão no gabinete" loading="lazy" width={1200} height={900} />
+              <div className="cap"><b>No gabinete, antes do domingo</b>
+                <span>O sermão sai do texto, não da memória do que se ouviu por aí.</span></div>
+            </div>
+            <div className="lp-pessoa">
+              <img className="lp-foto" src="/fotos/pessoa-2-cozinha.jpg" alt="Professora de EBD preparando a aula em casa" loading="lazy" width={1200} height={900} />
+              <div className="cap"><b>Na mesa da cozinha, no meio da semana</b>
+                <span>A aula de sábado pronta sem tomar a noite inteira.</span></div>
+            </div>
+            <div className="lp-pessoa">
+              <img className="lp-foto" src="/fotos/pessoa-3-grupo.jpg" alt="Líder conduzindo um pequeno grupo" loading="lazy" width={1200} height={900} />
+              <div className="cap"><b>No pequeno grupo, com o roteiro na mão</b>
+                <span>Perguntas prontas e o que é discutido sinalizado.</span></div>
+            </div>
+          </div>
+          <div className="lp-selo-card" style={{ marginTop: '1.25rem' }}>
+            <p style={{ fontSize: '.84rem', margin: 0 }}>Espaço reservado para depoimentos reais, com nome e
+              igreja — e para a linha editorial dos selos: quem revisa e como as divergências entre
+              tradições são tratadas.</p>
+          </div>
+        </div>
+      </section>
 
-      <footer className="landing-footer">
-        <p>© {new Date().getFullYear()} Bíblia Expositiva. Todos os direitos reservados.</p>
-        {/* Biblioteca pública: páginas ESTÁTICAS geradas em seo/, fora do React Router.
-            Precisam de <a> comum — <Link> tentaria rota client-side e cairia no
-            fallback do SPA, que não tem rota para /estudo. */}
-        <nav className="flex gap-4 flex-wrap justify-center">
-          <a href="/estudo/">Estudos por capítulo</a>
-          <a href="/tema/">Estudos por tema</a>
-          <a href="/sermao/">Esboços de sermão</a>
-          <a href="/usar-ia-para-pregar">Bíblia Digital e ministério</a>
-        </nav>
-        <nav className="flex gap-4 flex-wrap justify-center">
-          <Link to="/login">Entrar</Link>
-          <Link to="/cadastro">Criar conta</Link>
-          <Link to="/termos">Termos de Uso</Link>
-          <Link to="/privacidade">Privacidade</Link>
-          <a href="mailto:suporte@grupo-soares.com">Suporte</a>
-        </nav>
+      {/* Planos */}
+      <section className="lp-faixa lp-f-b" id="planos">
+        <div className="lp-wrap">
+          <div style={{ maxWidth: '42rem' }}>
+            <p className="eyebrow">Planos</p>
+            <h2 style={{ fontSize: '1.7rem', margin: '.75rem 0 .875rem' }}>Comece grátis. Assine quando fizer sentido.</h2>
+            <p className="lp-lead">{TESTE_GRATIS_LIMITE} materiais gratuitos, sem cartão. Depois você escolhe.</p>
+          </div>
+          <div className="lp-planos">
+            <div className="lp-plano">
+              <b>{PLANOS.avulso.nome}</b><span className="peq">Sem fidelidade</span>
+              <div className="val">{PLANOS.avulso.precoLabel}</div>
+              <div className="cic">pagamento único · {PLANOS.avulso.ciclo}</div>
+              <p>Para usar num período específico, sem assinar nada.</p>
+              <Link to="/cadastro" className="lp-btn lp-btn-l">Começar</Link>
+            </div>
+            <div className="lp-plano dest">
+              <b>{PLANOS.individual.nome}</b><span className="peq">Mensal ou anual</span>
+              <div className="val">{PLANOS.individual.precoLabel}</div>
+              <div className="cic">por mês · anual {PLANOS.individual.precos.ANUAL.precoLabel} ({PLANOS.individual.precos.ANUAL.economiaLabel?.toLowerCase()})</div>
+              <p>Para quem prepara material toda semana.</p>
+              <Link to="/cadastro" className="lp-btn lp-btn-o">Assinar</Link>
+            </div>
+            <div className="lp-plano">
+              <b>{PLANOS.igreja.nome}</b><span className="peq">Equipe inteira</span>
+              <div className="val">{PLANOS.igreja.precoLabel}</div>
+              <div className="cic">por mês · anual {PLANOS.igreja.precos.ANUAL.precoLabel}</div>
+              <p>Para ministérios que formam professores e líderes.</p>
+              <Link to="/cadastro" className="lp-btn lp-btn-l">Assinar</Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer className="lp-footer">
+        <div className="lp-wrap">
+          <div className="lp-rod">
+            <div>
+              <div className="marca"><img src="/icons/logo-64.png" alt="" /> Bíblia Expositiva</div>
+              <p>Estudos, sermões e exegeses com a origem de cada afirmação declarada.<br />
+                Feito para quem ensina a Palavra toda semana.</p>
+            </div>
+            <div>
+              <h4>Suporte</h4>
+              <div className="lp-contato">
+                <a href="mailto:suporte@grupo-soares.com"><span className="ic">✉</span> suporte@grupo-soares.com</a>
+                <a href="https://wa.me/5579996371970" target="_blank" rel="noopener noreferrer"><span className="ic">✆</span> Falar no WhatsApp</a>
+              </div>
+            </div>
+            <div>
+              <h4>Institucional</h4>
+              <p>
+                <Link to="/termos">Termos de uso</Link><br />
+                <Link to="/privacidade">Política de privacidade</Link><br />
+                <a href="#planos">Planos</a>
+              </p>
+            </div>
+          </div>
+          <p className="lp-legal">CNPJ 41.350.395/0001-30 · © {new Date().getFullYear()} Bíblia Expositiva PV — todos os direitos reservados.</p>
+          {/* Biblioteca pública: páginas ESTÁTICAS geradas em seo/, fora do React Router.
+              Precisam de <a> comum — <Link> tentaria rota client-side e cairia no
+              fallback do SPA, que não tem rota para /estudo. */}
+          <nav className="lp-legal-links">
+            <a href="/estudo/">Estudos por capítulo</a>
+            <a href="/tema/">Estudos por tema</a>
+            <a href="/sermao/">Esboços de sermão</a>
+            <a href="/usar-ia-para-pregar">Bíblia Digital e ministério</a>
+          </nav>
+        </div>
       </footer>
-      </div>
     </div>
   );
 }
