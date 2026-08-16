@@ -171,8 +171,11 @@ export default function StudyGenerator({
             setPaywall(true);
             void refreshQuota();
           } else if (code === 'whatsapp_required') {
+            // Bug antigo: mandava para "/conta", rota que não existe — como
+            // nenhuma rota casava, a tela ficava em branco (nem o Layout
+            // aparecia). A rota certa é "/minha-conta".
             showToast(msg, 'error');
-            navigate('/conta');
+            navigate('/minha-conta');
           } else {
             setError(msg);
           }
