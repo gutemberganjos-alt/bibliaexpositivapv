@@ -241,6 +241,19 @@
   .kit-page { padding: 0; }
   .kit-sheet { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none; border-radius: 0; }
   .kit-actions, nav { display: none !important; }
+
+  /* Impressão do material gerado em Estudos (ver StudyGenerator.tsx, botão
+     "Imprimir") — mesma receita do kit de aula: some com tudo, mostra só o
+     conteúdo, em preto sobre branco, sem o cromado escuro do app. */
+  .print-area, .print-area * { visibility: visible; }
+  .print-area {
+    position: absolute; left: 0; top: 0; width: 100%;
+    background: #fff; color: #1a1a1a; padding: 2rem;
+  }
+  .print-area .estudo-conteudo { color: #1a1a1a; font-size: 1.05rem; }
+  .print-area .estudo-conteudo h4 { color: #3a2c0a; }
+  .print-area .estudo-conteudo strong { color: #2a2010; }
+  .print-oculto { display: none !important; }
 }
 
 @layer utilities {
@@ -306,6 +319,16 @@
   color: #8C4A2B;
   background: rgba(140, 74, 43, 0.14);
   border-color: rgba(140, 74, 43, 0.55);
+}
+/* Selo com data-ref abre o Laboratório do Original naquele versículo (ver
+   StudyGenerator.tsx) — sinaliza que é clicável. */
+.selo[data-ref] {
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+.selo[data-ref]:hover {
+  filter: brightness(1.15);
 }
 
 /* Card explicitamente CLARO para o conteúdo gerado (.estudo-conteudo), mesmo

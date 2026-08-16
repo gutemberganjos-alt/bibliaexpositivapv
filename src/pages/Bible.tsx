@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronDown, Loader2, AlertCircle, Languages, ScrollText, Copy, Sparkles, RefreshCw } from 'lucide-react';
 import { BIBLE_BOOKS } from '../lib/bible-data';
 import type { BibleBook } from '../lib/bible-data';
@@ -30,14 +30,29 @@ interface BibleApiResponse {
 }
 
 export default function Bible() {
+  // Deep-link vindo de outra tela (ex.: clique num selo do estudo gerado, ou
+  // "Abrir no Laboratório do Original" do Dashboard) — ?livro=&cap=&verso=.
+  const [searchParams] = useSearchParams();
+  const versoAlvoRef = useRef<number | null>((() => {
+    const v = Number(searchParams.get('verso'));
+    return v > 0 ? v : null;
+  })());
+
   const [selectedVersion] = useState<'almeida'>('almeida');
-  const [selectedBook, setSelectedBook] = useState<BibleBook>(BIBLE_BOOKS[0]);
-  const [selectedChapter, setSelectedChapter] = useState<number>(1);
-  
+  const [selectedBook, setSelectedBook] = useState<BibleBook>(() => {
+    const nome = (searchParams.get('livro') ?? '').toLowerCase().trim();
+    if (!nome) return BIBLE_BOOKS[0];
+    return BIBLE_BOOKS.find((b) => b.name.toLowerCase() === nome) ?? BIBLE_BOOKS[0];
+  });
+  const [selectedChapter, setSelectedChapter] = useState<number>(() => {
+    const cap = Number(searchParams.get('cap'));
+    return cap > 0 ? cap : 1;
+  });
+
   const [verses, setVerses] = useState<Verse[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   const [selectedVerseIndex, setSelectedVerseIndex] = useState<number | null>(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 
@@ -100,6 +115,19 @@ export default function Bible() {
   useEffect(() => {
     fetchChapter();
   }, [selectedBook, selectedChapter, selectedVersion]);
+
+  // Aplica o versículo-alvo do deep-link (só uma vez, quando os versículos chegam).
+  useEffect(() => {
+    if (!verses.length || versoAlvoRef.current === null) return;
+    const alvo = versoAlvoRef.current;
+    versoAlvoRef.current = null;
+    const idx = verses.findIndex((v) => v.verse === alvo);
+    if (idx < 0) return;
+    setSelectedVerseIndex(idx);
+    requestAnimationFrame(() => {
+      document.querySelector(`[data-verse-index="${idx}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }, [verses]);
 
   // Click outside listener para fechar o menu
   useEffect(() => {
@@ -282,6 +310,7 @@ export default function Bible() {
             {verses.map((verse, index) => (
               <div
                 key={verse.verse}
+                data-verse-index={index}
                 className={`verse-container relative cursor-pointer p-2.5 rounded-lg transition-colors ${selectedVerseIndex === index ? 'bg-[var(--cor-dourado-bg)]' : 'hover:bg-[rgba(255,255,255,0.04)]'}`}
                 onClick={(e) => handleVerseClick(e, index)}
               >

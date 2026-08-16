@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SubscriptionProvider } from './contexts/SubscriptionContext';
 import { AdminProvider } from './contexts/AdminContext';
@@ -66,12 +66,25 @@ function HomeRoute() {
   return <Landing />;
 }
 
+/**
+ * Escopa o AdminProvider só ao app autenticado. Antes ele envolvia a árvore
+ * inteira (inclusive Landing/Termos/Privacidade/Login) — checagem de admin não
+ * tem nenhuma serventia ali, só custo de bundle/render extra em páginas
+ * públicas que importam para o Core Web Vitals (SEO, conversão).
+ */
+function AdminScope() {
+  return (
+    <AdminProvider>
+      <Outlet />
+    </AdminProvider>
+  );
+}
+
 function App() {
   return (
     <ErrorBoundary>
     <AuthProvider>
       <SubscriptionProvider>
-      <AdminProvider>
       <ToastProvider>
         <BrowserRouter>
           <Suspense fallback={<CarregandoRota />}>
@@ -93,8 +106,11 @@ function App() {
                 mandaria essa sessão direto para /inicio antes do usuário trocar a senha. */}
             <Route path="/resetar-senha" element={<ResetPassword />} />
 
-            {/* App autenticado: caminhos absolutos, não aninhados sob "/". */}
+            {/* App autenticado: caminhos absolutos, não aninhados sob "/".
+                AdminScope entra aqui dentro (não lá em cima, na árvore inteira)
+                — checagem de admin só interessa depois do login. */}
             <Route element={<ProtectedRoute />}>
+              <Route element={<AdminScope />}>
               <Route element={<Layout />}>
                 <Route path={APP_HOME} element={<Dashboard />} />
                 <Route path="/biblia" element={<Bible />} />
@@ -118,12 +134,12 @@ function App() {
                   <Route path="/admin/usuarios" element={<AdminUsuarios />} />
                 </Route>
               </Route>
+              </Route>
             </Route>
           </Routes>
           </Suspense>
         </BrowserRouter>
       </ToastProvider>
-      </AdminProvider>
       </SubscriptionProvider>
     </AuthProvider>
     </ErrorBoundary>

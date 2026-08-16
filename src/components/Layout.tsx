@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { Home, Book, Bookmark, LibraryBig, UserCircle, ChevronRight } from 'lucide-react';
+import { Home, Book, Bookmark, LibraryBig, UserCircle, ChevronRight, WifiOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
+import CommandPalette from './CommandPalette';
 
 const NAV_ITEMS = [
   { to: '/inicio', label: 'Início', icon: Home },
@@ -33,10 +35,27 @@ function iniciaisDoUsuario(nome?: string | null, email?: string | null): string 
   return email?.[0]?.toUpperCase() ?? '?';
 }
 
+/** Rastreia conexão para avisar o usuário que a Biblioteca continua legível offline. */
+function useOnline(): boolean {
+  const [online, setOnline] = useState(() => navigator.onLine);
+  useEffect(() => {
+    const marcarOnline = () => setOnline(true);
+    const marcarOffline = () => setOnline(false);
+    window.addEventListener('online', marcarOnline);
+    window.addEventListener('offline', marcarOffline);
+    return () => {
+      window.removeEventListener('online', marcarOnline);
+      window.removeEventListener('offline', marcarOffline);
+    };
+  }, []);
+  return online;
+}
+
 export default function Layout() {
   const location = useLocation();
   const { user } = useAuth();
   const { active, quota } = useSubscription();
+  const online = useOnline();
 
   const crumbs = CRUMBS[location.pathname] ?? ['Início'];
   const iniciais = iniciaisDoUsuario(user?.user_metadata?.full_name as string | undefined, user?.email);
@@ -98,6 +117,22 @@ export default function Layout() {
             ))}
           </div>
           <div className="flex items-center gap-2.5 shrink-0">
+            {!online && (
+              <span
+                className="inline-flex items-center gap-1 text-[10px] font-['Manrope'] font-semibold px-2 py-1 rounded-full"
+                style={{ color: '#F0B429', border: '1px solid rgba(240,180,41,.4)', background: 'rgba(240,180,41,.08)' }}
+                title="Sem conexão — sua Biblioteca salva continua disponível offline"
+              >
+                <WifiOff size={11} /> Offline
+              </span>
+            )}
+            <span
+              className="hidden md:inline-flex items-center gap-1 text-[10px] font-['Manrope'] font-semibold px-2 py-1 rounded-md"
+              style={{ color: 'var(--cor-navy-texto-dim)', border: '1px solid var(--cor-navy-borda)' }}
+              title="Abrir busca rápida"
+            >
+              <kbd>⌘</kbd><kbd>K</kbd>
+            </span>
             <span
               className="hidden sm:inline text-[10px] font-['Manrope'] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full"
               style={{ color: 'var(--cor-ouro-claro)', background: 'var(--cor-ouro-bg)' }}
@@ -131,6 +166,8 @@ export default function Layout() {
           </NavLink>
         ))}
       </nav>
+
+      <CommandPalette />
     </div>
   );
 }

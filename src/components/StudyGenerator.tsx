@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, AlertCircle, Copy, RotateCcw, BookmarkPlus, Check, ClipboardList, Lock, ArrowRight, BookOpen } from 'lucide-react';
+import { Loader2, AlertCircle, Copy, RotateCcw, BookmarkPlus, Check, ClipboardList, Lock, ArrowRight, BookOpen, Printer, Mic, Volume2, VolumeX } from 'lucide-react';
 import PenWriting from './PenWriting';
 import {
   MODOS,
@@ -16,7 +16,7 @@ import {
   TRADUCAO_PADRAO,
   TEMAS_SUGERIDOS,
 } from '../lib/ai-config';
-import { gerarEstudoStream } from '../lib/gerar';
+import { gerarEstudo, gerarEstudoStream } from '../lib/gerar';
 import type { EstudoResultado } from '../lib/gerar';
 import { useToast } from '../contexts/ToastContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
@@ -27,6 +27,10 @@ import type { SavedStudy } from '../lib/study-library';
 import { cacheStudy, getCachedStudy } from '../lib/study-cache';
 import LessonKit from './LessonKit';
 import { getStudyProfileId, profileName } from '../lib/profile';
+import { parseReferencia } from '../lib/bible-ref';
+import { buscarPaginaPublicaExata, urlPaginaPublica } from '../lib/seo-pages';
+import type { PaginaPublica } from '../lib/seo-pages';
+import { ExternalLink } from 'lucide-react';
 
 /** Mensagens de espera. Trocam a cada ~7s para o material longo não parecer travado. */
 const ETAPAS_ESPERA = [
@@ -53,6 +57,8 @@ interface StudyGeneratorProps {
   modoFixo?: string;
   /** Preenche a referência inicial (ex.: vindo da tela da Bíblia). */
   referenciaInicial?: string;
+  /** Pré-seleciona o público (ex.: vindo da paleta de comando ⌘K). */
+  publicoInicial?: string;
   /** Placeholder do campo de referência. */
   placeholder?: string;
 }
@@ -62,10 +68,13 @@ export default function StudyGenerator({
   subtitulo = 'Gere material bíblico sob medida: escolha o formato, o público e o texto.',
   modoFixo,
   referenciaInicial = '',
+  publicoInicial,
   placeholder = 'Ex.: João 3:16, o fruto do Espírito, a parábola do semeador…',
 }: StudyGeneratorProps) {
   const [modoId, setModoId] = useState<string>(modoFixo ?? MODO_PADRAO);
-  const [publicoId, setPublicoId] = useState<string>(PUBLICO_PADRAO);
+  const [publicoId, setPublicoId] = useState<string>(
+    PUBLICOS.some((p) => p.id === publicoInicial) ? (publicoInicial as string) : PUBLICO_PADRAO,
+  );
   const [referencia, setReferencia] = useState<string>(referenciaInicial);
 
   // Lente teológica da resposta — ver briefing "Reformulação da tela de Estudos".
@@ -74,6 +83,88 @@ export default function StudyGenerator({
   const [teologoId, setTeologoId] = useState<string>('');
   const [traducaoId, setTraducaoId] = useState<string>(TRADUCAO_PADRAO);
   const [mostrarSugestoes, setMostrarSugestoes] = useState(false);
+
+  // Ditado por voz no campo de referência — recurso nativo do navegador
+  // (sem custo de API): quem está de pé preparando aula pode falar em vez de digitar.
+  // Tipagem mínima local: a API Web Speech não faz parte do lib DOM padrão do TS.
+  interface ReconhecimentoVoz {
+    lang: string;
+    interimResults: boolean;
+    maxAlternatives: number;
+    onresult: ((ev: { results: { [i: number]: { [j: number]: { transcript: string } } } }) => void) | null;
+    onend: (() => void) | null;
+    onerror: (() => void) | null;
+    start: () => void;
+    stop: () => void;
+  }
+  const [ouvindoDitado, setOuvindoDitado] = useState(false);
+  const reconhecimentoRef = useRef<ReconhecimentoVoz | null>(null);
+  const ReconhecimentoCtor = (window as unknown as Record<string, unknown>).SpeechRecognition ||
+    (window as unknown as Record<string, unknown>).webkitSpeechRecognition;
+  const vozDisponivel = typeof window !== 'undefined' && typeof ReconhecimentoCtor === 'function';
+
+  function alternarDitado() {
+    if (ouvindoDitado) {
+      reconhecimentoRef.current?.stop();
+      return;
+    }
+    if (typeof ReconhecimentoCtor !== 'function') return;
+    const reconhecimento = new (ReconhecimentoCtor as new () => ReconhecimentoVoz)();
+    reconhecimento.lang = 'pt-BR';
+    reconhecimento.interimResults = false;
+    reconhecimento.maxAlternatives = 1;
+    reconhecimento.onresult = (evento) => {
+      const texto = evento.results[0]?.[0]?.transcript ?? '';
+      if (texto) setReferencia((atual) => (atual ? `${atual} ${texto}` : texto).slice(0, 200));
+    };
+    reconhecimento.onend = () => setOuvindoDitado(false);
+    reconhecimento.onerror = () => setOuvindoDitado(false);
+    reconhecimentoRef.current = reconhecimento;
+    reconhecimento.start();
+    setOuvindoDitado(true);
+  }
+
+  // Leitura em voz alta do estudo gerado — window.speechSynthesis, também sem custo.
+  const [falandoEstudo, setFalandoEstudo] = useState(false);
+  const vozLeituraDisponivel = typeof window !== 'undefined' && 'speechSynthesis' in window;
+
+  function alternarLeitura() {
+    if (falandoEstudo) {
+      window.speechSynthesis.cancel();
+      setFalandoEstudo(false);
+      return;
+    }
+    const fonteHtml = resultado?.html ?? streamHtml;
+    if (!fonteHtml) return;
+    const texto = fonteHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!texto) return;
+    window.speechSynthesis.cancel();
+    const fala = new SpeechSynthesisUtterance(texto);
+    fala.lang = 'pt-BR';
+    fala.onend = () => setFalandoEstudo(false);
+    fala.onerror = () => setFalandoEstudo(false);
+    window.speechSynthesis.speak(fala);
+    setFalandoEstudo(true);
+  }
+
+  useEffect(() => {
+    // Ao sair da tela (ou trocar de estudo), não deixar a leitura tocando sozinha.
+    return () => { if (vozLeituraDisponivel) window.speechSynthesis.cancel(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // "Já existe uma versão pública disto?" — evita gastar uma geração quando o
+  // pipeline seo/ já publicou exatamente esse termo (ver lib/seo-pages.ts).
+  const [paginaPublica, setPaginaPublica] = useState<PaginaPublica | null>(null);
+  useEffect(() => {
+    const termo = referencia.trim();
+    if (termo.length < 3) { setPaginaPublica(null); return; }
+    let ativo = true;
+    const t = setTimeout(() => {
+      void buscarPaginaPublicaExata(termo).then((p) => { if (ativo) setPaginaPublica(p); });
+    }, 500);
+    return () => { ativo = false; clearTimeout(t); };
+  }, [referencia]);
 
   const toggleCorrente = (id: string) =>
     setCorrentes((atual) => (atual.includes(id) ? atual.filter((c) => c !== id) : [...atual, id]));
@@ -127,7 +218,10 @@ export default function StudyGenerator({
     return () => clearInterval(t);
   }, [loading]);
 
-  const handleGerar = () => {
+  // `opts.publicoOverride` é usado pelo ajuste de nível incremental — reescreve
+  // o MESMO estudo para outro público sem inventar um caminho de custo novo:
+  // é a mesma chamada de geração, mesma franquia, só com o publicoId trocado.
+  const handleGerar = (opts?: { publicoOverride?: string }) => {
     if (!referencia.trim()) {
       setError('Informe um texto, tema ou referência bíblica.');
       return;
@@ -137,8 +231,9 @@ export default function StudyGenerator({
       setPaywall(true);
       return;
     }
+    const publicoAlvo = opts?.publicoOverride ?? publicoId;
     const params = {
-      modoId, publicoId, referencia, perfilId: getStudyProfileId(),
+      modoId, publicoId: publicoAlvo, referencia, perfilId: getStudyProfileId(),
       correntes, mostrarTag, teologoId: teologoId || undefined, traducaoId,
     };
     const cached = getCachedStudy(params);
@@ -147,11 +242,13 @@ export default function StudyGenerator({
       setResultado(cached);
       setSalvo(false);
       setReutilizado(true);
+      if (opts?.publicoOverride) setPublicoId(opts.publicoOverride);
       showToast('Material recuperado do seu acervo. Nenhuma geração foi usada.', 'info');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
+    if (opts?.publicoOverride) setPublicoId(opts.publicoOverride);
     setLoading(true);
     setStreaming(true);
     setEtapaEspera(0);
@@ -218,10 +315,58 @@ export default function StudyGenerator({
       .catch(() => showToast('Erro ao copiar', 'error'));
   };
 
+  // Comparação lado a lado de duas correntes teológicas — opt-in e com custo
+  // explícito: são DUAS chamadas de geração (uma por corrente), o dobro da
+  // franquia de um estudo comum. Por isso o window.confirm antes de disparar.
+  const [comparando, setComparando] = useState(false);
+  const [resultadoComparacao, setResultadoComparacao] = useState<{ a: EstudoResultado; b: EstudoResultado; nomeA: string; nomeB: string } | null>(null);
+
+  const handleComparar = async () => {
+    if (correntes.length !== 2) return;
+    if (!referencia.trim()) {
+      setError('Informe um texto, tema ou referência bíblica.');
+      return;
+    }
+    if (semGeracoes) {
+      setPaywall(true);
+      return;
+    }
+    const [idA, idB] = correntes;
+    const nomeA = CORRENTES.find((c) => c.id === idA)?.nome ?? idA;
+    const nomeB = CORRENTES.find((c) => c.id === idB)?.nome ?? idB;
+    const confirmado = window.confirm(
+      `Isso gera DUAS versões completas — "${nomeA}" e "${nomeB}" — lado a lado.\n\nConsome 2 gerações da sua franquia (o dobro de um estudo comum). Continuar?`,
+    );
+    if (!confirmado) return;
+
+    setComparando(true);
+    setError('');
+    setResultadoComparacao(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    const base = {
+      modoId, publicoId, referencia, perfilId: getStudyProfileId(),
+      mostrarTag: true, teologoId: teologoId || undefined, traducaoId,
+    };
+    try {
+      const [resA, resB] = await Promise.all([
+        gerarEstudo({ ...base, correntes: [idA] }),
+        gerarEstudo({ ...base, correntes: [idB] }),
+      ]);
+      setResultadoComparacao({ a: resA, b: resB, nomeA, nomeB });
+      void refreshQuota();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Não foi possível gerar a comparação.', 'error');
+    } finally {
+      setComparando(false);
+    }
+  };
+
   const handleNovo = () => {
     abortRef.current?.();
     abortRef.current = null;
     setResultado(null);
+    setResultadoComparacao(null);
     setStreaming(false);
     setStreamHtml('');
     setStreamTitulo('');
@@ -250,6 +395,48 @@ export default function StudyGenerator({
     }
   };
 
+  // ---------- TELA DE COMPARAÇÃO (duas correntes lado a lado) ----------
+  if (comparando) {
+    return (
+      <div className="home-dark" style={FUNDO_ESCURO}>
+        <div className="p-4 md:p-8 max-w-6xl mx-auto pb-24 flex flex-col items-center justify-center min-h-[60vh] text-center">
+          <Loader2 size={28} className="animate-spin text-[var(--cor-dourado)] mb-4" />
+          <p className="font-['Manrope'] text-[var(--cor-pergaminho)] text-sm">
+            Gerando as duas versões em paralelo — uma para cada corrente…
+          </p>
+        </div>
+      </div>
+    );
+  }
+  if (resultadoComparacao) {
+    return (
+      <div className="home-dark" style={FUNDO_ESCURO}>
+        <div className="p-4 md:p-8 max-w-7xl mx-auto pb-24">
+          <div className="flex items-center justify-between gap-3 mb-6">
+            <p className="eyebrow">COMPARAÇÃO LADO A LADO</p>
+            <button onClick={() => setResultadoComparacao(null)} className="btn-secondary flex items-center gap-2">
+              <RotateCcw size={14} /> Voltar
+            </button>
+          </div>
+          <div className="grid lg:grid-cols-2 gap-6">
+            {[
+              { res: resultadoComparacao.a, nome: resultadoComparacao.nomeA },
+              { res: resultadoComparacao.b, nome: resultadoComparacao.nomeB },
+            ].map(({ res, nome }) => (
+              <div key={nome}>
+                <p className="text-xs font-['Manrope'] font-bold uppercase tracking-wider text-[var(--cor-dourado)] mb-1.5">{nome}</p>
+                <h2 className="font-['Playfair_Display'] text-xl md:text-2xl text-[var(--cor-dourado-claro)] mb-4 leading-snug">{res.titulo}</h2>
+                <div className="estudo-card-claro p-5 md:p-6">
+                  <article className="estudo-conteudo" dangerouslySetInnerHTML={{ __html: res.html }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ---------- TELA DE RESULTADO (inclui o streaming em andamento) ----------
   const emStream = streaming && !resultado;
   if (resultado && mostrarKit) {
@@ -258,6 +445,11 @@ export default function StudyGenerator({
   if (resultado || emStream) {
     const tituloExibido = resultado?.titulo || streamTitulo || referencia;
     const htmlExibido = resultado?.html ?? streamHtml;
+    // Sumário ao vivo: extrai os <h4> já escritos no streaming — em vez de só
+    // uma frase de espera, mostra o material tomando forma em tempo real.
+    const secoesEscritas = emStream
+      ? [...streamHtml.matchAll(/<h4[^>]*>(.*?)<\/h4>/g)].map((m) => m[1].replace(/<[^>]+>/g, ''))
+      : [];
     return (
       <div className="home-dark" style={FUNDO_ESCURO}>
         <div className="p-4 md:p-8 max-w-5xl mx-auto pb-24">
@@ -307,6 +499,28 @@ export default function StudyGenerator({
               >
                 <Copy size={17} />
               </button>
+              {resultado && (
+                <button
+                  onClick={() => window.print()}
+                  title="Imprimir / salvar em PDF — bom para levar ao púlpito ou à sala de aula sem internet"
+                  className="p-2.5 rounded-lg border border-[var(--cor-borda)] text-[var(--cor-texto-medio)] hover:text-[var(--cor-dourado)] hover:border-[var(--cor-borda-hover)] transition-colors"
+                >
+                  <Printer size={17} />
+                </button>
+              )}
+              {resultado && vozLeituraDisponivel && (
+                <button
+                  onClick={alternarLeitura}
+                  title={falandoEstudo ? 'Parar leitura' : 'Ouvir este estudo em voz alta'}
+                  className={`p-2.5 rounded-lg border transition-colors ${
+                    falandoEstudo
+                      ? 'border-[var(--cor-dourado)] text-[var(--cor-dourado)]'
+                      : 'border-[var(--cor-borda)] text-[var(--cor-texto-medio)] hover:text-[var(--cor-dourado)] hover:border-[var(--cor-borda-hover)]'
+                  }`}
+                >
+                  {falandoEstudo ? <VolumeX size={17} /> : <Volume2 size={17} />}
+                </button>
+              )}
               <button
                 onClick={handleNovo}
                 title="Novo estudo"
@@ -317,6 +531,7 @@ export default function StudyGenerator({
             </div>
           </div>
 
+          <div className="print-area">
           <h1 className="font-['Playfair_Display'] text-3xl md:text-4xl text-[var(--cor-dourado-claro)] mb-2 leading-tight">
             {tituloExibido}
             {emStream && !tituloExibido && (
@@ -346,17 +561,72 @@ export default function StudyGenerator({
             </div>
           )}
 
+          {/* Ajuste de nível incremental — reescreve o MESMO estudo para outro
+              público sem passar pela tela de formulário de novo. Não é um
+              caminho de custo novo: é a mesma chamada de geração de sempre,
+              por isso o aviso explícito de que consome 1 geração. */}
+          {resultado && !emStream && (
+            <div className="mb-6 pb-6 border-b border-[var(--cor-borda)] print-oculto">
+              <p className="text-[11px] font-['Manrope'] uppercase tracking-wider text-[var(--cor-dourado-dim)] mb-2.5">
+                Reescrever para outro público
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {PUBLICOS.filter((p) => p.id !== publicoId).map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => handleGerar({ publicoOverride: p.id })}
+                    title={`Gera uma nova versão deste estudo para "${p.nome}" — consome 1 geração da sua franquia`}
+                    className="px-3 py-1.5 rounded-full border border-[var(--cor-borda)] text-xs font-['Manrope'] text-[var(--cor-texto-medio)] hover:border-[var(--cor-dourado)] hover:text-[var(--cor-dourado)] transition-colors"
+                  >
+                    {p.nome}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-[var(--cor-texto-dim)] font-['Manrope'] mt-2">Cada clique gera de novo e usa 1 geração da sua franquia.</p>
+            </div>
+          )}
+
           {emStream && (
-            <div className="flex items-center gap-2 text-xs text-[var(--cor-dourado-dim)] font-['Manrope'] mb-6 pb-6 border-b border-[var(--cor-borda)]">
-              <Loader2 size={13} className="animate-spin" />
-              <span>Gerando o material…</span>
+            <div className="mb-6 pb-6 border-b border-[var(--cor-borda)]">
+              <div className="flex items-center gap-2 text-xs text-[var(--cor-dourado-dim)] font-['Manrope'] mb-3">
+                <Loader2 size={13} className="animate-spin" />
+                <span>{secoesEscritas.length > 0 ? `Escrevendo — ${secoesEscritas.length} seção(ões) prontas` : 'Gerando o material…'}</span>
+              </div>
+              {secoesEscritas.length > 0 && (
+                <ul className="space-y-1.5">
+                  {secoesEscritas.map((s, i) => (
+                    <li key={`${s}-${i}`} className="flex items-center gap-2 text-sm font-['Manrope'] text-[var(--cor-pergaminho)]">
+                      <Check size={13} className="text-[var(--cor-sucesso)] shrink-0" />
+                      {s}
+                    </li>
+                  ))}
+                  <li className="flex items-center gap-2 text-sm font-['Manrope'] text-[var(--cor-texto-dim)] italic">
+                    <Loader2 size={13} className="animate-spin shrink-0" />
+                    escrevendo a próxima seção…
+                  </li>
+                </ul>
+              )}
             </div>
           )}
 
           {/* Conteúdo gerado pelo modelo — cartão claro proposital (os selos de
-              confiabilidade foram calibrados para fundo claro). */}
+              confiabilidade foram calibrados para fundo claro). Clique em um
+              selo com referência (data-ref) abre o Laboratório do Original
+              direto naquele versículo. */}
           {htmlExibido ? (
-            <div className="relative estudo-card-claro p-6 md:p-8">
+            <div
+              className="relative estudo-card-claro p-6 md:p-8"
+              onClick={(e) => {
+                const alvo = (e.target as HTMLElement).closest('.selo[data-ref]');
+                const ref = alvo?.getAttribute('data-ref');
+                if (!ref) return;
+                const resolvido = parseReferencia(ref);
+                if (!resolvido) return;
+                const params = new URLSearchParams({ livro: resolvido.livro.name, cap: String(resolvido.capitulo) });
+                if (resolvido.versiculo) params.set('verso', String(resolvido.versiculo));
+                navigate(`/biblia?${params.toString()}`);
+              }}
+            >
               <article
                 className="estudo-conteudo"
                 dangerouslySetInnerHTML={{ __html: htmlExibido }}
@@ -382,7 +652,27 @@ export default function StudyGenerator({
             </div>
           )}
 
-          <div className="mt-8 flex justify-center">
+          {resultado?.meta?.relacionados && resultado.meta.relacionados.length > 0 && (
+            <div className="mt-6 pt-5 border-t border-[var(--cor-borda)]">
+              <h4 className="font-['Manrope'] text-xs uppercase tracking-wider text-[var(--cor-dourado-dim)] mb-3">
+                Estudos relacionados
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {resultado.meta.relacionados.map((termo) => (
+                  <button
+                    key={termo}
+                    onClick={() => navigate(`/estudos?ref=${encodeURIComponent(termo)}`)}
+                    className="px-3.5 py-1.5 rounded-full border border-[var(--cor-borda)] text-xs font-['Manrope'] text-[var(--cor-texto-medio)] hover:border-[var(--cor-dourado)] hover:text-[var(--cor-dourado)] transition-colors"
+                  >
+                    {termo}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          </div>
+
+          <div className="mt-8 flex justify-center print-oculto">
             {emStream ? (
               <button onClick={handleNovo} className="btn-secondary flex items-center gap-2">
                 Cancelar
@@ -477,12 +767,29 @@ export default function StudyGenerator({
 
             {/* Referência — com autocomplete de temas e chips de sugestão rápida */}
             <section className="card p-5 md:p-6 relative">
-              <label
-                htmlFor="referencia"
-                className="block font-['Manrope'] text-xs uppercase tracking-wider text-[var(--cor-dourado-dim)] mb-3"
-              >
-                Texto, tema ou referência
-              </label>
+              <div className="flex items-center justify-between mb-3">
+                <label
+                  htmlFor="referencia"
+                  className="block font-['Manrope'] text-xs uppercase tracking-wider text-[var(--cor-dourado-dim)]"
+                >
+                  Texto, tema ou referência
+                </label>
+                {vozDisponivel && (
+                  <button
+                    type="button"
+                    onClick={alternarDitado}
+                    title="Ditar por voz"
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-['Manrope'] font-semibold uppercase tracking-wide transition-colors ${
+                      ouvindoDitado
+                        ? 'border-[var(--cor-dourado)] bg-[var(--cor-dourado-bg)] text-[var(--cor-dourado-claro)] animate-pulse'
+                        : 'border-[var(--cor-borda)] text-[var(--cor-texto-dim)] hover:border-[var(--cor-borda-hover)] hover:text-[var(--cor-texto-medio)]'
+                    }`}
+                  >
+                    <Mic size={12} />
+                    {ouvindoDitado ? 'Ouvindo…' : 'Falar'}
+                  </button>
+                )}
+              </div>
               <textarea
                 id="referencia"
                 value={referencia}
@@ -535,6 +842,27 @@ export default function StudyGenerator({
               </div>
             </section>
 
+            {/* Já existe uma versão pública deste tema — economiza a franquia
+                e ajuda o SEO (link interno para a página já indexada). */}
+            {paginaPublica && (
+              <a
+                href={urlPaginaPublica(paginaPublica)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="card p-4 flex items-center gap-3 border-[var(--cor-oliva)]/40 hover:border-[var(--cor-oliva)] transition-colors"
+              >
+                <ExternalLink size={18} className="shrink-0" style={{ color: 'var(--cor-oliva)' }} />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-['Manrope'] font-medium text-[var(--cor-pergaminho)] truncate">
+                    Já existe uma versão pública: {paginaPublica.titulo}
+                  </span>
+                  <span className="block text-xs text-[var(--cor-texto-dim)] mt-0.5">
+                    Ler grátis sem gastar uma geração — abre em nova aba
+                  </span>
+                </span>
+              </a>
+            )}
+
             {/* Corrente teológica + Perspectiva do teólogo + Tradução */}
             <div className="grid sm:grid-cols-2 gap-5">
               <section className="card p-5 md:p-6">
@@ -578,6 +906,19 @@ export default function StudyGenerator({
                       Mostrar tag na resposta
                     </button>
                   </div>
+                  {correntes.length === 2 && (
+                    <div className="pt-2.5 mt-1 border-t border-[var(--cor-borda)]">
+                      <button
+                        type="button"
+                        onClick={handleComparar}
+                        title="Gera duas versões completas, uma para cada corrente marcada, lado a lado — consome 2 gerações"
+                        className="w-full text-left px-3.5 py-2.5 rounded-lg border border-[var(--cor-dourado)] bg-[var(--cor-dourado-bg)] text-[var(--cor-dourado-claro)] text-sm font-['Manrope'] font-medium flex items-center justify-between gap-2 hover:opacity-90 transition-opacity"
+                      >
+                        Comparar as duas lado a lado
+                        <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border border-[var(--cor-dourado-claro)]">2 gerações</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </section>
 
@@ -631,7 +972,7 @@ export default function StudyGenerator({
             )}
 
             <button
-              onClick={handleGerar}
+              onClick={() => handleGerar()}
               disabled={loading || !referencia.trim()}
               className={`btn-primary w-full flex items-center justify-center gap-2 !py-4 !text-[13.5px] ${
                 loading || !referencia.trim() ? 'opacity-50 cursor-not-allowed' : ''

@@ -12,6 +12,7 @@
     "seo:configurar": "bash seo/configurar.sh",
     "seo:minerar": "node seo/1-minerar.mjs",
     "seo:fila": "node seo/2-fila.mjs",
+    "seo:fila-demanda": "node seo/2b-fila-demanda-real.mjs",
     "seo:gerar": "node seo/3-gerar.mjs",
     "seo:publicar": "node seo/4-publicar.mjs",
     "seo:estatico": "node seo/5-estatico.mjs"

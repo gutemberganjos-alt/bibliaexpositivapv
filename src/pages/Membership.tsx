@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Building2, Check, Crown, ShieldCheck, Loader2, Unlock } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
@@ -396,6 +396,13 @@ export default function Membership() {
               Voltar
             </button>
           </div>
+
+          <p className="text-xs text-[var(--cor-texto-dim)] text-center mt-4">
+            Ao continuar, você concorda com os{' '}
+            <Link to="/termos" target="_blank" className="underline hover:text-[var(--cor-dourado)]">Termos de Uso</Link>
+            {' '}e a{' '}
+            <Link to="/privacidade" target="_blank" className="underline hover:text-[var(--cor-dourado)]">Política de Privacidade</Link>.
+          </p>
         </section>
       )}
 
@@ -476,6 +483,12 @@ export default function Membership() {
       </section>
 
       <p className="membership-trust"><ShieldCheck size={15} /> Pagamento processado com segurança (PIX e cartão). Nos planos Individual e Igreja você cancela quando quiser, sem multa — dentro de 7 dias o reembolso é integral e automático. No plano Avulso não tem nada para cancelar: o acesso simplesmente não renova sozinho. Acesso liberado em poucos minutos após a confirmação do pagamento.</p>
+
+      <p className="text-center text-xs mt-3" style={{ color: 'var(--cor-texto-dim)' }}>
+        <Link to="/termos" className="hover:text-[var(--cor-dourado)]">Termos de Uso</Link>
+        {' '}·{' '}
+        <Link to="/privacidade" className="hover:text-[var(--cor-dourado)]">Política de Privacidade</Link>
+      </p>
     </div>
   );
 }

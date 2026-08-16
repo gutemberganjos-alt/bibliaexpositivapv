@@ -70,6 +70,25 @@ async function devolverQuota(uid: string | null): Promise<void> {
   } catch { /* devolução é best-effort */ }
 }
 
+/**
+ * Registra, de forma best-effort, que alguém pediu este termo/modo/público —
+ * alimenta o pipeline seo/ com demanda REAL (não só keyword-mining) sem
+ * nenhum custo extra de IA (é só um upsert). Nunca do robô SEO (ele mesmo
+ * já é a origem do conteúdo público, contá-lo inflaria a própria demanda).
+ */
+async function registrarDemandaSeo(referencia: string, modoId: string, publicoId: string): Promise<void> {
+  try {
+    const url = Deno.env.get('SUPABASE_URL');
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!url || !serviceKey) return;
+    await fetch(`${url}/rest/v1/rpc/registrar_demanda_seo`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', apikey: serviceKey, authorization: `Bearer ${serviceKey}` },
+      body: JSON.stringify({ p_termo: referencia.slice(0, 200), p_modo_id: modoId, p_publico_id: publicoId }),
+    });
+  } catch { /* best-effort — nunca deve derrubar a geração */ }
+}
+
 interface ResultadoQuota {
   ok: boolean;
   status?: number;
@@ -254,6 +273,7 @@ Deno.serve(async (req: Request) => {
     if (querStream) {
       return await responderStream(apiKey, body, {
         modoId, publicoId, referencia, uid, correntes, mostrarTag, teologoId, traducaoId,
+        ehRobo: ehRoboSeo(req),
       });
     }
 
@@ -299,6 +319,7 @@ Deno.serve(async (req: Request) => {
       await devolverQuota(uid);
       return json({ error: validacao.erro }, 502);
     }
+    if (!ehRoboSeo(req)) await registrarDemandaSeo(referencia, modoId, publicoId);
     return json(resultado);
   } catch (e) {
     console.error(e);
@@ -314,6 +335,7 @@ async function responderStream(
   ctx: {
     modoId: string; publicoId: string; referencia: string; uid: string | null;
     correntes: string[]; mostrarTag: boolean; teologoId?: string; traducaoId: string;
+    ehRobo: boolean;
   },
 ): Promise<Response> {
   const { resp, erro } = await chamarComRetry(apiKey, body, true);
@@ -406,6 +428,7 @@ async function responderStream(
             await devolverQuota(ctx.uid);
             send({ type: 'error', error: validacao.erro });
           } else {
+            if (!ctx.ehRobo) await registrarDemandaSeo(ctx.referencia, ctx.modoId, ctx.publicoId);
             send({ type: 'done', result: resultado });
           }
         }
@@ -514,9 +537,19 @@ function montarResultado(
       visao,
       perspectiva,
       traducao: opcoes.traducaoId,
+      relacionados: validarRelacionados(parsed.relacionados),
     },
     demo: false,
   };
+}
+
+/** Sanitiza a lista de referências/temas relacionados devolvida pelo modelo. */
+function validarRelacionados(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((r): r is string => typeof r === 'string' && r.trim().length > 0 && r.length <= 80)
+    .map((r) => r.trim())
+    .slice(0, 5);
 }
 
 function montarCabecalhoReserva(
@@ -582,7 +615,12 @@ function sanitizarHtml(html: string): string {
     if (tagNome !== 'span') return `<${tagNome}>`;
     const classe = tag.match(/class\s*=\s*["']([^"']+)["']/i)?.[1] ?? '';
     const valida = /^selo selo-(escritura|consenso|aceita|debatida|hipotese|tradicao)$/.test(classe);
-    return valida ? `<span class="${classe}">` : '<span>';
+    if (!valida) return '<span>';
+    // data-ref (opcional): só letras/números/espaços/dois-pontos/hífen/vírgula —
+    // é o que liga o selo ao Laboratório do Original daquele versículo.
+    const refBruta = tag.match(/data-ref\s*=\s*["']([^"']+)["']/i)?.[1] ?? '';
+    const ref = /^[\p{L}0-9 :,\-]{1,40}$/u.test(refBruta) ? refBruta : '';
+    return ref ? `<span class="${classe}" data-ref="${ref}">` : `<span class="${classe}">`;
   });
 }
 

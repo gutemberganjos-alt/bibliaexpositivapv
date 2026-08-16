@@ -168,9 +168,16 @@ export default function Privacidade() {
         do app antes da mudança valer.
       </p>
 
-      <p className="doc-rodape">
-        <Link to="/termos">Termos de Uso</Link> · <Link to="/">Início</Link>
-      </p>
+      <div className="doc-rodape">
+        <p>
+          <Link to="/termos">Termos de Uso</Link> · <Link to="/">Início</Link>
+        </p>
+        <p className="mt-2 text-xs" style={{ color: 'var(--cor-texto-dim)' }}>
+          Bíblia Expositiva PV · CNPJ 41.350.395/0001-30 ·{' '}
+          <a href="mailto:suporte@grupo-soares.com">suporte@grupo-soares.com</a> ·{' '}
+          <a href="https://wa.me/5579996371970" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+        </p>
+      </div>
     </div>
   );
 }

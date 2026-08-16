@@ -17,6 +17,8 @@ export interface EstudoMeta {
   visao?: string;
   perspectiva?: string;
   traducao?: string;
+  /** 3–5 passagens/temas relacionados devolvidos pelo modelo — mesma chamada, sem custo extra. */
+  relacionados?: string[];
 }
 
 export interface EstudoResultado {

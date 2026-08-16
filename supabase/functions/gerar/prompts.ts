@@ -35,6 +35,14 @@ Marque as afirmações centrais com selos HTML:
 <span class="selo selo-hipotese">HIPÓTESE</span>
 <span class="selo selo-tradicao">TRADIÇÃO</span>
 
+Quando um selo estiver amarrado a UM versículo específico (não a uma ideia
+geral), acrescente o atributo data-ref com a referência exata no formato
+"Livro Cap:Vers" — por exemplo:
+<span class="selo selo-escritura" data-ref="João 3:16">ESCRITURA</span>
+Isso liga o selo ao Laboratório do Original daquele versículo. Só inclua
+data-ref quando houver um versículo único e claro por trás da afirmação —
+nunca invente uma referência só para preencher o atributo.
+
 DENSIDADE (regra de qualidade — tão obrigatória quanto as anteriores)
 O usuário PAGA por este material e vai usá-lo para ensinar pessoas. Material raso
 é falha grave. Portanto:
@@ -60,8 +68,16 @@ Responda APENAS com JSON válido, sem markdown ao redor:
     "profundidade": "Iniciante | Intermediário | Avançado | Seminário",
     "tempo": "X min",
     "classificacao": "classificação predominante"
-  }
+  },
+  "relacionados": ["Referência ou tema 1", "Referência ou tema 2", "Referência ou tema 3"]
 }
+
+CAMPO "relacionados"
+Liste de 3 a 5 passagens ou temas genuinamente conectados ao material (não a
+mesma referência pedida) — coisas que a pessoa estudaria a seguir. Cada item é
+curto: só a referência ("Efésios 1:3-14") ou um tema de poucas palavras
+("A aliança abraâmica"). Nunca invente uma conexão frágil só para preencher a
+lista.
 `;
 
 export const PUBLICOS: Record<string, string> = {
