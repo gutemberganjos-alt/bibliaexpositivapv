@@ -5,7 +5,7 @@
 //   emitindo o material progressivamente (eventos "titulo"/"delta"/"done"/"error").
 // Usa Google Gemini com retry automático + modelo reserva. Chave só no servidor.
 
-import { montarPrompt, MODOS, PUBLICOS, SECOES_OBRIGATORIAS } from './prompts.ts';
+import { montarPrompt, MODOS, PUBLICOS, SECOES_OBRIGATORIAS, TRADUCOES_VALIDAS, TEOLOGOS_NOMES } from './prompts.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -196,6 +196,17 @@ Deno.serve(async (req: Request) => {
   try {
     const payload = await req.json();
     const { modoId, publicoId, referencia, perfilId } = payload ?? {};
+    // Opcionais: lente teológica da resposta (ver briefing "Reformulação da tela
+    // de Estudos"). Nunca bloqueiam a geração — se vierem inválidos, são ignorados
+    // dentro de montarPrompt/regraIdentificacao.
+    const correntes: string[] = Array.isArray(payload?.correntes)
+      ? payload.correntes.filter((c: unknown) => typeof c === 'string').slice(0, 2)
+      : [];
+    const mostrarTag = payload?.mostrarTag !== false; // padrão: mostra a tag "Visão" quando houver corrente
+    const teologoId: string | undefined = typeof payload?.teologoId === 'string' ? payload.teologoId : undefined;
+    const traducaoId: string = TRADUCOES_VALIDAS.includes((payload?.traducaoId ?? '').toUpperCase())
+      ? String(payload.traducaoId).toUpperCase()
+      : 'ARC';
     const querStream = payload?.stream === true ||
       (req.headers.get('accept') ?? '').includes('text/event-stream');
 
@@ -225,7 +236,8 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'GEMINI_API_KEY não configurada.' }, 500);
     }
 
-    const system = montarPrompt(modoId, publicoId, perfilId);
+    const opcoesPrompt = { correntes, mostrarTag, teologoId, traducaoId };
+    const system = montarPrompt(modoId, publicoId, perfilId, opcoesPrompt);
     const userMsg = `Texto/tema solicitado: ${referencia}\n\nGere o material completo conforme o MODO e o PÚBLICO definidos nas instruções do sistema. Lembre-se: responda APENAS com o JSON especificado.`;
 
     const body = JSON.stringify({
@@ -240,7 +252,9 @@ Deno.serve(async (req: Request) => {
     });
 
     if (querStream) {
-      return await responderStream(apiKey, body, { modoId, publicoId, referencia, uid });
+      return await responderStream(apiKey, body, {
+        modoId, publicoId, referencia, uid, correntes, mostrarTag, teologoId, traducaoId,
+      });
     }
 
     // ---------- Caminho não-stream (JSON único) ----------
@@ -279,7 +293,7 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'Resposta em formato inesperado.' }, 502);
     }
 
-    const resultado = montarResultado(parsed, referencia, publicoId);
+    const resultado = montarResultado(parsed, referencia, publicoId, { correntes, mostrarTag, teologoId, traducaoId });
     const validacao = validarResultado(resultado.html, modoId);
     if (!validacao.valido) {
       await devolverQuota(uid);
@@ -297,7 +311,10 @@ Deno.serve(async (req: Request) => {
 async function responderStream(
   apiKey: string,
   body: string,
-  ctx: { modoId: string; publicoId: string; referencia: string; uid: string | null },
+  ctx: {
+    modoId: string; publicoId: string; referencia: string; uid: string | null;
+    correntes: string[]; mostrarTag: boolean; teologoId?: string; traducaoId: string;
+  },
 ): Promise<Response> {
   const { resp, erro } = await chamarComRetry(apiKey, body, true);
 
@@ -381,7 +398,9 @@ async function responderStream(
           await devolverQuota(ctx.uid);
           send({ type: 'error', error: 'A resposta foi interrompida antes de terminar. Tente novamente com uma passagem menor.' });
         } else {
-          const resultado = montarResultado(parsed, ctx.referencia, ctx.publicoId);
+          const resultado = montarResultado(parsed, ctx.referencia, ctx.publicoId, {
+            correntes: ctx.correntes, mostrarTag: ctx.mostrarTag, teologoId: ctx.teologoId, traducaoId: ctx.traducaoId,
+          });
           const validacao = validarResultado(resultado.html, ctx.modoId);
           if (!validacao.valido) {
             await devolverQuota(ctx.uid);
@@ -471,8 +490,15 @@ function montarResultado(
   parsed: Record<string, unknown>,
   referencia: string,
   publicoId: string,
+  opcoes: { correntes: string[]; mostrarTag: boolean; teologoId?: string; traducaoId: string },
 ) {
   const meta = (parsed.meta ?? {}) as Record<string, unknown>;
+  const visao = opcoes.correntes.length && opcoes.mostrarTag ? opcoes.correntes.join(' + ') : '';
+  const perspectiva = opcoes.teologoId ? TEOLOGOS_NOMES[opcoes.teologoId] ?? '' : '';
+  // O modelo já devolve "cabecalho" pronto (regraIdentificacao manda formatá-lo);
+  // se por algum motivo vier vazio, montamos um de reserva no mesmo formato.
+  const cabecalhoModelo = typeof parsed.cabecalho === 'string' ? parsed.cabecalho.trim() : '';
+  const cabecalho = cabecalhoModelo || montarCabecalhoReserva(referencia, opcoes, publicoId);
   return {
     titulo: (parsed.titulo as string) ?? referencia,
     html: sanitizarHtml((parsed.html as string) ?? ''),
@@ -482,9 +508,30 @@ function montarResultado(
       publico: publicoId,
       tempo: (meta.tempo as string) ?? '—',
       classificacao: (meta.classificacao as string) ?? '—',
+      // Novos campos — sempre em `meta` (coluna jsonb já existente): não exigem
+      // migração de banco para a Biblioteca conseguir salvar/reabrir.
+      cabecalho,
+      visao,
+      perspectiva,
+      traducao: opcoes.traducaoId,
     },
     demo: false,
   };
+}
+
+function montarCabecalhoReserva(
+  referencia: string,
+  opcoes: { correntes: string[]; mostrarTag: boolean; teologoId?: string; traducaoId: string },
+  publicoId: string,
+): string {
+  const visao = opcoes.correntes.length && opcoes.mostrarTag ? opcoes.correntes.join(' + ') : 'Não especificada';
+  const perspectiva = opcoes.teologoId ? TEOLOGOS_NOMES[opcoes.teologoId] ?? 'Padrão' : 'Padrão';
+  const nomesPublico: Record<string, string> = {
+    criancas: 'Crianças', adolescentes: 'Adolescentes', jovens: 'Jovens', igreja: 'Igreja',
+    professores: 'Professores', pastores: 'Pastores', teologia: 'Teologia',
+  };
+  const publico = nomesPublico[publicoId] ?? publicoId;
+  return `${referencia} (${opcoes.traducaoId}) | Visão: ${visao} | Perspectiva: ${perspectiva} | Público: ${publico}`;
 }
 
 /**

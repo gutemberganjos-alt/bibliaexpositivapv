@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, AlertCircle, Copy, RotateCcw, BookmarkPlus, Check, ClipboardList, Lock } from 'lucide-react';
 import PenWriting from './PenWriting';
@@ -9,6 +9,12 @@ import {
   PUBLICO_PADRAO,
   nomeDoModo,
   nomeDoPublico,
+  CORRENTES,
+  gruposDeTeologos,
+  nomeDoTeologo,
+  TRADUCOES,
+  TRADUCAO_PADRAO,
+  TEMAS_SUGERIDOS,
 } from '../lib/ai-config';
 import { gerarEstudoStream } from '../lib/gerar';
 import type { EstudoResultado } from '../lib/gerar';
@@ -54,6 +60,24 @@ export default function StudyGenerator({
   const [publicoId, setPublicoId] = useState<string>(PUBLICO_PADRAO);
   const [referencia, setReferencia] = useState<string>(referenciaInicial);
 
+  // Lente teológica da resposta — ver briefing "Reformulação da tela de Estudos".
+  const [correntes, setCorrentes] = useState<string[]>([]);
+  const [mostrarTag, setMostrarTag] = useState(true);
+  const [teologoId, setTeologoId] = useState<string>('');
+  const [traducaoId, setTraducaoId] = useState<string>(TRADUCAO_PADRAO);
+  const [mostrarSugestoes, setMostrarSugestoes] = useState(false);
+
+  const toggleCorrente = (id: string) =>
+    setCorrentes((atual) => (atual.includes(id) ? atual.filter((c) => c !== id) : [...atual, id]));
+
+  const sugestoesTema = useMemo(() => {
+    const termo = referencia.trim().toLowerCase();
+    const lista = termo
+      ? TEMAS_SUGERIDOS.filter((t) => t.toLowerCase().includes(termo))
+      : TEMAS_SUGERIDOS;
+    return lista.slice(0, 6);
+  }, [referencia]);
+
   const [loading, setLoading] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const [streamHtml, setStreamHtml] = useState('');
@@ -96,7 +120,10 @@ export default function StudyGenerator({
       setPaywall(true);
       return;
     }
-    const params = { modoId, publicoId, referencia, perfilId: getStudyProfileId() };
+    const params = {
+      modoId, publicoId, referencia, perfilId: getStudyProfileId(),
+      correntes, mostrarTag, teologoId: teologoId || undefined, traducaoId,
+    };
     const cached = getCachedStudy(params);
     if (cached) {
       setError('');
@@ -276,6 +303,14 @@ export default function StudyGenerator({
           )}
         </h1>
 
+        {/* Cabeçalho de identificação — "Referência (Tradução) | Visão | Perspectiva | Público".
+            Regra de ouro: toda resposta gerada vem com esta linha fixa. */}
+        {resultado?.meta?.cabecalho && (
+          <p className="text-xs font-['Manrope'] text-[var(--cor-dourado-dim)] mb-4 pb-4 border-b border-[var(--cor-borda)]">
+            {resultado.meta.cabecalho}
+          </p>
+        )}
+
         {resultado && (
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--cor-texto-dim)] font-['Manrope'] mb-6 pb-6 border-b border-[var(--cor-borda)]">
             {resultado.meta?.profundidade && resultado.meta.profundidade !== '—' && (
@@ -408,8 +443,8 @@ export default function StudyGenerator({
         </div>
       </section>
 
-      {/* Referência */}
-      <section className="mb-6">
+      {/* Referência — com autocomplete de temas e chips de sugestão rápida */}
+      <section className="mb-6 relative">
         <label
           htmlFor="referencia"
           className="block font-['Manrope'] text-xs uppercase tracking-wider text-[var(--cor-dourado-dim)] mb-3"
@@ -420,6 +455,8 @@ export default function StudyGenerator({
           id="referencia"
           value={referencia}
           onChange={(e) => setReferencia(e.target.value)}
+          onFocus={() => setMostrarSugestoes(true)}
+          onBlur={() => setTimeout(() => setMostrarSugestoes(false), 150)}
           onKeyDown={(e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') handleGerar();
           }}
@@ -431,6 +468,144 @@ export default function StudyGenerator({
         <div className="text-right text-[11px] text-[var(--cor-texto-dim)] mt-1 font-['Manrope']">
           {referencia.length}/200
         </div>
+
+        {mostrarSugestoes && sugestoesTema.length > 0 && (
+          <div className="absolute left-0 right-0 top-[calc(100%-1.1rem)] z-20 rounded-md border border-[var(--cor-borda-hover)] bg-[var(--cor-fundo-card)] shadow-lg overflow-hidden">
+            {sugestoesTema.map((tema) => (
+              <button
+                key={tema}
+                type="button"
+                onMouseDown={() => { setReferencia(tema); setMostrarSugestoes(false); }}
+                className="w-full text-left px-3.5 py-2.5 text-sm font-['Literata'] text-[var(--cor-pergaminho)] hover:bg-[var(--cor-fundo-hover)] transition-colors flex items-center justify-between"
+              >
+                {tema}
+                <span className="text-[10px] font-['Manrope'] uppercase tracking-wide text-[var(--cor-texto-dim)]">tema</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-2 mt-3">
+          {TEMAS_SUGERIDOS.slice(0, 6).map((tema) => (
+            <button
+              key={tema}
+              type="button"
+              onClick={() => setReferencia(tema)}
+              className={`px-3 py-1 rounded-full border text-xs font-['Manrope'] transition-colors ${
+                referencia === tema
+                  ? 'border-[var(--cor-dourado)] bg-[var(--cor-dourado-bg)] text-[var(--cor-dourado-claro)]'
+                  : 'border-[var(--cor-borda)] text-[var(--cor-texto-medio)] hover:border-[var(--cor-borda-hover)]'
+              }`}
+            >
+              {tema}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Corrente teológica + Perspectiva do teólogo + Tradução */}
+      <section className="mb-6 grid sm:grid-cols-2 gap-5">
+        <div>
+          <label className="block font-['Manrope'] text-xs uppercase tracking-wider text-[var(--cor-dourado-dim)] mb-3">
+            Corrente teológica
+          </label>
+          <div className="space-y-2.5">
+            {CORRENTES.map((c) => {
+              const marcado = correntes.includes(c.id);
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => toggleCorrente(c.id)}
+                  className="flex items-center gap-2.5 text-sm font-['Literata'] text-[var(--cor-pergaminho)]"
+                >
+                  <span
+                    className={`w-[18px] h-[18px] rounded-[5px] border flex items-center justify-center shrink-0 transition-colors ${
+                      marcado ? 'bg-[var(--cor-dourado)] border-[var(--cor-dourado)]' : 'border-[var(--cor-borda-hover)]'
+                    }`}
+                  >
+                    {marcado && <Check size={12} className="text-white" />}
+                  </span>
+                  {c.nome}
+                </button>
+              );
+            })}
+            <div className="pt-2.5 mt-1 border-t border-[var(--cor-borda)]">
+              <button
+                type="button"
+                onClick={() => setMostrarTag((v) => !v)}
+                className="flex items-center gap-2.5 text-sm font-['Literata'] text-[var(--cor-pergaminho)]"
+              >
+                <span
+                  className={`w-[18px] h-[18px] rounded-[5px] border flex items-center justify-center shrink-0 transition-colors ${
+                    mostrarTag ? 'bg-[var(--cor-ouro)] border-[var(--cor-ouro)]' : 'border-[var(--cor-borda-hover)]'
+                  }`}
+                >
+                  {mostrarTag && <Check size={12} className="text-white" />}
+                </span>
+                Mostrar tag na resposta
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="teologo" className="block font-['Manrope'] text-xs uppercase tracking-wider text-[var(--cor-dourado-dim)] mb-3">
+            Perspectiva do teólogo <span className="normal-case text-[var(--cor-texto-dim)]">(opcional)</span>
+          </label>
+          <select
+            id="teologo"
+            value={teologoId}
+            onChange={(e) => setTeologoId(e.target.value)}
+            className="input-base w-full p-2.5 text-sm font-['Literata']"
+          >
+            <option value="">Nenhuma (resposta neutra)</option>
+            {gruposDeTeologos().map(({ grupo, itens }) => (
+              <optgroup key={grupo} label={grupo}>
+                {itens.map((t) => (
+                  <option key={t.id} value={t.id}>{t.nome}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+
+          <label htmlFor="traducao" className="block font-['Manrope'] text-xs uppercase tracking-wider text-[var(--cor-dourado-dim)] mb-3 mt-5">
+            Tradução
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {TRADUCOES.map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTraducaoId(t)}
+                className={`px-3 py-1.5 rounded-full border text-xs font-['Manrope'] font-semibold transition-colors ${
+                  traducaoId === t
+                    ? 'border-[var(--cor-dourado)] bg-[var(--cor-dourado-bg)] text-[var(--cor-dourado-claro)]'
+                    : 'border-[var(--cor-borda)] text-[var(--cor-texto-medio)] hover:border-[var(--cor-borda-hover)]'
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Prévia do cabeçalho — a regra de identificação exige esta linha em toda resposta */}
+      <section className="mb-6 rounded-md border border-[var(--cor-borda)] bg-[var(--cor-fundo-hover)] px-3.5 py-2.5">
+        <p className="text-[10px] font-['Manrope'] uppercase tracking-wider text-[var(--cor-texto-dim)] mb-1">
+          Cabeçalho da resposta
+        </p>
+        <p className="text-xs font-['Manrope'] text-[var(--cor-texto-medio)] leading-relaxed">
+          <strong className="text-[var(--cor-pergaminho)]">{referencia.trim() || 'Referência'} ({traducaoId})</strong>
+          {mostrarTag && correntes.length > 0 && (
+            <> {' '}| Visão: <strong className="text-[var(--cor-dourado)]">{correntes.map((id) => CORRENTES.find((c) => c.id === id)?.nome).join(' + ')}</strong></>
+          )}
+          {teologoId && (
+            <> {' '}| Perspectiva: <strong className="text-[var(--cor-dourado)]">{nomeDoTeologo(teologoId)}</strong></>
+          )}
+          {' '}| Público: <strong className="text-[var(--cor-pergaminho)]">{nomeDoPublico(publicoId)}</strong>
+        </p>
       </section>
 
       {error && (

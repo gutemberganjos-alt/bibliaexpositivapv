@@ -7,6 +7,16 @@ export interface EstudoMeta {
   publico: string;
   tempo: string;
   classificacao: string;
+  /**
+   * Cabeçalho de identificação da resposta, no formato
+   * "Referência (Tradução) | Visão: X | Perspectiva: Y | Público: Z".
+   * Vive em `meta` (jsonb já existente) para não exigir migração de banco —
+   * campos ausentes em estudos salvos antes desta mudança ficam undefined.
+   */
+  cabecalho?: string;
+  visao?: string;
+  perspectiva?: string;
+  traducao?: string;
 }
 
 export interface EstudoResultado {
@@ -21,6 +31,14 @@ export interface GerarEstudoParams {
   publicoId: string;
   referencia: string;
   perfilId?: string;
+  /** Corrente teológica marcada (0, 1 ou as 2) — ver lib/ai-config.ts CORRENTES. */
+  correntes?: string[];
+  /** "Mostrar tag na resposta" — só afeta o cabeçalho, não a lente teológica usada. */
+  mostrarTag?: boolean;
+  /** id de TEOLOGOS ("Responder como:"), opcional. */
+  teologoId?: string;
+  /** sigla de TRADUCOES; cai para ARC no servidor se ausente/inválida. */
+  traducaoId?: string;
 }
 
 /**

@@ -51,6 +51,12 @@
     --cor-sucesso:        #2F6E56;
     --cor-alerta:         #9A7727;
     --cor-erro:           #B74D48;
+    /* Verde oliva — terceiro acento vivo (ao lado do navy e do dourado) pedido
+       para adensar o Dashboard: usado em tags/ícones secundários, nunca como
+       cor dominante. */
+    --cor-oliva:          #7C8B4F;
+    --cor-oliva-claro:    #A3B074;
+    --cor-oliva-bg:       rgba(124,139,79,0.14);
     --raio-card:          18px;
     --raio-btn:           12px;
     --transicao:          all 0.25s ease;

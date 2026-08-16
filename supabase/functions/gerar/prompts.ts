@@ -53,6 +53,7 @@ FORMATO DE SAÍDA (obrigatório)
 Responda APENAS com JSON válido, sem markdown ao redor:
 {
   "titulo": "título do material",
+  "cabecalho": "linha única de identificação — siga à risca as instruções de CABEÇALHO DE IDENTIFICAÇÃO abaixo",
   "html": "conteúdo em HTML simples usando apenas <p>, <h4>, <ul>, <li>, <blockquote> (com <cite> para a referência), <strong>, <em> e os spans de selo",
   "meta": {
     "fontes": "fontes utilizadas",
@@ -74,6 +75,70 @@ export const PUBLICOS: Record<string, string> = {
   pastores: 'PÚBLICO: PASTORES. Linguagem técnica quando útil; foco em pregação, pastoreio e preparo de mensagem.',
   teologia: 'PÚBLICO: ESTUDANTES DE TEOLOGIA. Acadêmico: termos técnicos, transliterações, estado da questão, bibliografia.',
 };
+
+// Corrente teológica — ids em sincronia com src/lib/ai-config.ts (CORRENTES).
+// Só se aplica a temas onde essas duas tradições realmente divergem (soteriologia,
+// eleição, graça, perseverança); fora disso não deve mudar nada na resposta.
+export const CORRENTES: Record<string, string> = {
+  calvinista: 'CORRENTE TEOLÓGICA SOLICITADA: CALVINISTA/REFORMADA. Quando o tema tocar soteriologia, eleição, graça irresistível, predestinação ou perseverança dos santos — pontos onde a tradição Reformada diverge de fato da Arminiana — explique a partir da leitura Reformada/Calvinista. Continue nomeando que existe a posição Arminiana em contraste, sem apresentá-la como erro grosseiro. Fora desses temas, não force uma leitura confessional onde não há divergência real.',
+  arminianista: 'CORRENTE TEOLÓGICA SOLICITADA: ARMINIANISTA/WESLEYANA. Quando o tema tocar soteriologia, eleição, graça preveniente, livre-arbítrio ou perseverança dos santos — pontos onde a tradição Arminiana diverge de fato da Calvinista — explique a partir da leitura Arminiana/Wesleyana. Continue nomeando que existe a posição Calvinista em contraste, sem apresentá-la como erro grosseiro. Fora desses temas, não force uma leitura confessional onde não há divergência real.',
+};
+
+// Perspectiva de um teólogo/expositor específico — ids em sincronia com
+// src/lib/ai-config.ts (TEOLOGOS). É um "responder como", não uma citação:
+// nunca invente uma frase e atribua a essa pessoa (vale a regra geral do
+// PROMPT_BASE — sem fonte verificada, sem aspas).
+export const TEOLOGOS: Record<string, string> = {
+  hernandes_dias_lopes: 'PERSPECTIVA SOLICITADA: escreva na linha pastoral-expositiva de Hernandes Dias Lopes — aplicação prática abundante, ilustrações pastorais, tom caloroso e acessível, sem perder o rigor bíblico. Não invente citações atribuídas a ele; apenas escreva no seu estilo e ênfases.',
+  augustus_nicodemus: 'PERSPECTIVA SOLICITADA: escreva na linha reformada e apologética de Augustus Nicodemus — precisão doutrinária, categorias da teologia sistemática reformada, tom direto e combativo com erros doutrinários. Não invente citações atribuídas a ele; apenas escreva no seu estilo e ênfases.',
+  john_macarthur: 'PERSPECTIVA SOLICITADA: escreva na linha expositiva versículo-por-versículo de John MacArthur — rigor gramatical e contextual, ênfase na suficiência e autoridade da Escritura, aplicação direta e sem concessões. Não invente citações atribuídas a ele; apenas escreva no seu estilo e ênfases.',
+  rc_sproul: 'PERSPECTIVA SOLICITADA: escreva na linha de R.C. Sproul — clareza didática sobre a santidade de Deus e a soberania divina, tom de professor que traduz teologia sistemática densa em linguagem acessível. Não invente citações atribuídas a ele; apenas escreva no seu estilo e ênfases.',
+  john_piper: 'PERSPECTIVA SOLICITADA: escreva na linha de John Piper — ênfase no "hedonismo cristão" (a glória de Deus e a alegria mais profunda do crente são inseparáveis), tom apaixonado e centrado na supremacia de Deus em todas as coisas. Não invente citações atribuídas a ele; apenas escreva no seu estilo e ênfases.',
+  stanley_horton: 'PERSPECTIVA SOLICITADA: escreva na linha pentecostal clássica de Stanley Horton — teologia sistemática pentecostal com rigor acadêmico, ênfase no batismo no Espírito Santo como experiência subsequente à conversão e nos dons espirituais. Não invente citações atribuídas a ele; apenas escreva no seu estilo e ênfases.',
+  antonio_gilberto: 'PERSPECTIVA SOLICITADA: escreva na linha pentecostal brasileira de Antônio Gilberto — didática de Escola Dominical (CPAD), linguagem acessível à igreja brasileira, ênfase na obra presente do Espírito Santo. Não invente citações atribuídas a ele; apenas escreva no seu estilo e ênfases.',
+};
+
+// Traduções aceitas para a "Regra de Ouro dos versículos" — em sincronia com
+// src/lib/ai-config.ts (TRADUCOES). ARC é o padrão do produto.
+export const TRADUCOES_VALIDAS = ['ARA', 'ARC', 'NVI', 'NVT', 'NAA', 'KJV'];
+
+/**
+ * Regra de citação de versículos + contrato do campo "cabecalho".
+ * Ficam fora do PROMPT_BASE porque dependem da tradução e das escolhas do
+ * usuário (corrente/perspectiva/público) feitas nesta geração específica.
+ */
+function regraIdentificacao(
+  traducaoId: string | undefined,
+  correntes: string[],
+  mostrarTag: boolean,
+  teologoId: string | undefined,
+  nomeTeologo: string | undefined,
+  publicoId: string,
+): string {
+  const sigla = TRADUCOES_VALIDAS.includes((traducaoId ?? '').toUpperCase())
+    ? (traducaoId as string).toUpperCase()
+    : 'ARC';
+  const visao = correntes.length && mostrarTag ? correntes.join(' + ') : "Não especificada";
+  const perspectiva = teologoId && nomeTeologo ? nomeTeologo : 'Padrão';
+  return `REGRA DE OURO DOS VERSÍCULOS
+Nunca cite um versículo sem indicar a tradução. Toda referência bíblica literal no
+texto deve seguir o formato "Livro Capítulo:Versículo (${sigla})" — por exemplo
+"João 3:16 (${sigla})". Use a tradução ${sigla} como base para as citações literais.
+
+CABEÇALHO DE IDENTIFICAÇÃO (obrigatório)
+Preencha o campo "cabecalho" do JSON de saída com EXATAMENTE uma linha neste formato,
+substituindo REFERÊNCIA pela referência bíblica principal do material (ou pelo tema,
+se não houver um texto único):
+"REFERÊNCIA (${sigla}) | Visão: ${visao} | Perspectiva: ${perspectiva} | Público: ${nomeDoPublicoInterno(publicoId)}"`;
+}
+
+function nomeDoPublicoInterno(publicoId: string): string {
+  const nomes: Record<string, string> = {
+    criancas: 'Crianças', adolescentes: 'Adolescentes', jovens: 'Jovens', igreja: 'Igreja',
+    professores: 'Professores', pastores: 'Pastores', teologia: 'Teologia',
+  };
+  return nomes[publicoId] ?? publicoId;
+}
 
 export const PERFIS: Record<string, string> = {
   novo_convertido: 'PERFIL DO USUÁRIO: NOVO CONVERTIDO. Explique termos antes de usá-los, ofereça fundamentos e um próximo passo claro.',
@@ -155,6 +220,52 @@ export const SECOES_OBRIGATORIAS: Record<string, string[]> = {
   apologetica: ['A pergunta', 'Resposta breve', 'Base bíblica', 'Contexto e raciocínio', 'Objeções comuns', 'Como conversar com respeito', 'Conclusão'],
 };
 
-export function montarPrompt(modoId: string, publicoId: string, perfilId?: string): string {
-  return [PROMPT_BASE, PERFIS[perfilId ?? 'membro'] ?? PERFIS.membro, PUBLICOS[publicoId] ?? '', MODOS[modoId] ?? ''].join('\n\n');
+/** Nomes de exibição dos teólogos — chaves iguais às de TEOLOGOS acima. */
+export const TEOLOGOS_NOMES: Record<string, string> = {
+  hernandes_dias_lopes: 'Hernandes Dias Lopes',
+  augustus_nicodemus: 'Augustus Nicodemus',
+  john_macarthur: 'John MacArthur',
+  rc_sproul: 'R.C. Sproul',
+  john_piper: 'John Piper',
+  stanley_horton: 'Stanley Horton',
+  antonio_gilberto: 'Antônio Gilberto',
+};
+
+export interface OpcoesPrompt {
+  /** ids de CORRENTES marcados (0, 1 ou os 2). */
+  correntes?: string[];
+  /** "[ ] Mostrar tag na resposta" — só afeta o cabeçalho, não a lente teológica. */
+  mostrarTag?: boolean;
+  /** id de TEOLOGOS, opcional ("Nenhuma" no cliente = undefined). */
+  teologoId?: string;
+  /** sigla de TRADUCOES_VALIDAS; cai para ARC se ausente/inválida. */
+  traducaoId?: string;
+}
+
+export function montarPrompt(
+  modoId: string,
+  publicoId: string,
+  perfilId?: string,
+  opcoes?: OpcoesPrompt,
+): string {
+  const correntes = (opcoes?.correntes ?? []).filter((c) => CORRENTES[c]);
+  const teologoId = opcoes?.teologoId && TEOLOGOS[opcoes.teologoId] ? opcoes.teologoId : undefined;
+
+  const blocos = [
+    PROMPT_BASE,
+    PERFIS[perfilId ?? 'membro'] ?? PERFIS.membro,
+    PUBLICOS[publicoId] ?? '',
+    MODOS[modoId] ?? '',
+    ...correntes.map((c) => CORRENTES[c]),
+    teologoId ? TEOLOGOS[teologoId] : '',
+    regraIdentificacao(
+      opcoes?.traducaoId,
+      correntes,
+      opcoes?.mostrarTag !== false,
+      teologoId,
+      teologoId ? TEOLOGOS_NOMES[teologoId] : undefined,
+      publicoId,
+    ),
+  ];
+  return blocos.filter(Boolean).join('\n\n');
 }

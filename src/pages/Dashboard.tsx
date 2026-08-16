@@ -3,11 +3,48 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight, BookOpen, FolderHeart, X, Bell, Search,
   Heart, Presentation, ScrollText, GraduationCap, MessageCircleQuestion,
-  Users, Compass, ShieldCheck,
+  Users, Compass, ShieldCheck, Clock, Flame,
 } from 'lucide-react';
 import PenWriting from '../components/PenWriting';
 import { fetchStudies, getCachedStudies } from '../lib/study-library';
-import { MODOS } from '../lib/ai-config';
+import type { SavedStudy } from '../lib/study-library';
+import { MODOS, nomeDoModo } from '../lib/ai-config';
+
+// Curadoria estática (como OBJECTIVES abaixo) — trilhas de estudo sugeridas.
+// Cada uma manda o usuário direto para /estudos com o modo e o texto certos.
+const TRILHAS = [
+  { titulo: 'Fundamentos da Soteriologia', descricao: 'Como a salvação é ensinada do início ao fim das Escrituras.', icon: BookOpen, modo: 'estudo', ref: 'Soteriologia' },
+  { titulo: 'Escatologia comparada', descricao: 'As principais leituras sobre os últimos tempos, lado a lado.', icon: Clock, modo: 'estudo', ref: 'Escatologia' },
+  { titulo: 'Introdução à Pneumatologia', descricao: 'A pessoa e a obra do Espírito Santo na vida da igreja.', icon: Flame, modo: 'estudo', ref: 'Pneumatologia' },
+];
+
+// Versículos com abertura no original verificada manualmente (evita citar
+// hebraico/grego errado por conta própria). Alterna por dia do ano — ver
+// Golden Rule dos versículos: sempre com a tradução indicada.
+const VERSICULOS_DESTAQUE = [
+  {
+    ref: 'Gênesis 1:1', traducao: 'ARC',
+    texto: 'No princípio criou Deus os céus e a terra.',
+    original: 'בְּרֵאשִׁית בָּרָא אֱלֹהִים אֵת הַשָּׁמַיִם וְאֵת הָאָרֶץ',
+    translit: 'Bereshit bará Elohim et hashamayim ve\'et haárets',
+    idioma: 'Hebraico',
+  },
+  {
+    ref: 'João 3:16', traducao: 'ARC',
+    texto: 'Porque Deus amou o mundo de tal maneira que deu o seu Filho unigênito, para que todo aquele que nele crê não pereça, mas tenha a vida eterna.',
+    original: 'Οὕτως γὰρ ἠγάπησεν ὁ Θεὸς τὸν κόσμον, ὥστε τὸν Υἱὸν τὸν μονογενῆ ἔδωκεν',
+    translit: 'Hoútōs gàr ēgápēsen ho Theòs tòn kósmon, hṓste tòn Hyiòn tòn monogenê édōken',
+    idioma: 'Grego',
+  },
+];
+
+function dataLabel(iso: string) {
+  const dias = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  if (dias <= 0) return 'hoje';
+  if (dias === 1) return 'ontem';
+  if (dias < 7) return `há ${dias} dias`;
+  return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(new Date(iso));
+}
 
 const OBJECTIVES = [
   { id: 'devocao', title: 'Crescer na Palavra', description: 'Devocionais e estudos para sua caminhada diária.' },
@@ -39,13 +76,22 @@ function getObjective() {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  // Mostra o número do cache na hora e corrige com o do banco quando chegar.
-  const [savedCount, setSavedCount] = useState(() => getCachedStudies().length);
+  // Mostra o cache na hora e corrige com o banco quando chegar — tanto a
+  // contagem quanto a lista completa (usada em "Continuar estudando").
+  const [studies, setStudies] = useState<SavedStudy[]>(() => getCachedStudies());
+  const savedCount = studies.length;
   useEffect(() => {
     let ativo = true;
-    void fetchStudies().then((lista) => { if (ativo) setSavedCount(lista.length); });
+    void fetchStudies().then((lista) => { if (ativo) setStudies(lista); });
     return () => { ativo = false; };
   }, []);
+  const recentes = studies.slice(0, 3);
+
+  // Versículo do dia: alterna pela curadoria fixa conforme o dia do ano —
+  // estável durante o dia inteiro, muda no dia seguinte, sem precisar de IA.
+  const diaDoAno = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86_400_000);
+  const versiculoDoDia = VERSICULOS_DESTAQUE[diaDoAno % VERSICULOS_DESTAQUE.length];
+
   const [objective, setObjective] = useState(getObjective);
   const selectedObjective = OBJECTIVES.find((item) => item.id === objective);
 
@@ -105,10 +151,73 @@ export default function Dashboard() {
       </section>
 
       <section className="card p-5 mb-5">
-        <p className="eyebrow mb-2">PARA HOJE</p>
-        <h2 className="text-xl mb-3 text-[var(--cor-ouro-claro)]">Versículo do Dia</h2>
-        <p className="text-lg italic mb-4 leading-relaxed">"Lâmpada para os meus pés é tua palavra, e luz para o meu caminho."</p>
-        <p className="text-sm uppercase tracking-widest font-['Manrope'] text-[var(--cor-navy-texto-dim)]">— Salmos 119:105</p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="eyebrow">VERSÍCULO DO DIA · NO ORIGINAL</p>
+          <span className="text-[10px] font-['Manrope'] font-bold uppercase tracking-wider px-2 py-1 rounded-full text-[var(--cor-ouro-claro)] border border-[var(--cor-navy-borda)]">
+            {versiculoDoDia.traducao}
+          </span>
+        </div>
+        <h2 className="text-xl mb-3 text-[var(--cor-ouro-claro)]">{versiculoDoDia.ref}</h2>
+        <p className="text-lg italic mb-4 leading-relaxed">"{versiculoDoDia.texto}"</p>
+        <div className="rounded-md p-3 mb-4" style={{ background: 'rgba(255,255,255,.04)' }}>
+          <p className="text-[10px] uppercase tracking-widest font-['Manrope'] text-[var(--cor-navy-texto-dim)] mb-1.5">{versiculoDoDia.idioma}</p>
+          <p dir={versiculoDoDia.idioma === 'Hebraico' ? 'rtl' : 'ltr'} className="text-lg mb-1" style={{ fontFamily: "'Noto Sans Hebrew', 'Noto Sans', serif" }}>
+            {versiculoDoDia.original}
+          </p>
+          <p className="text-xs italic text-[var(--cor-navy-texto-dim)]">{versiculoDoDia.translit}</p>
+        </div>
+        <button onClick={() => navigate('/biblia')} className="text-sm font-['Manrope'] font-semibold text-[var(--cor-ouro-claro)] flex items-center gap-1.5">
+          Abrir no Laboratório do Original <ArrowRight size={14} />
+        </button>
+      </section>
+
+      {/* Continuar estudando — dados reais da biblioteca, não mockados. */}
+      {recentes.length > 0 && (
+        <section className="mb-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-['Manrope'] text-sm text-[var(--cor-ouro-claro)] tracking-wider">Continuar estudando</h3>
+            <button onClick={() => navigate('/biblioteca')} className="text-xs font-['Manrope'] text-[var(--cor-navy-texto-dim)] hover:text-[var(--cor-ouro-claro)]">ver tudo</button>
+          </div>
+          <div className="space-y-2.5">
+            {recentes.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => navigate(`/biblioteca?abrir=${s.id}`)}
+                className="card w-full p-3.5 flex items-center gap-3 text-left"
+              >
+                <BookOpen size={18} className="shrink-0 text-[var(--cor-ouro-claro)]" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm text-white truncate">{s.titulo}</span>
+                  <span className="block text-xs text-[var(--cor-navy-texto-dim)] mt-0.5">{nomeDoModo(s.modoId)} · {dataLabel(s.createdAt)}</span>
+                </span>
+                <ArrowRight size={15} className="shrink-0 text-[var(--cor-ouro-claro)]" />
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Trilhas recomendadas — curadoria estática, cada uma abre /estudos pronta. */}
+      <section className="mb-5">
+        <h3 className="font-['Manrope'] text-sm text-[var(--cor-ouro-claro)] tracking-wider mb-3">Trilhas recomendadas</h3>
+        <div className="grid sm:grid-cols-3 gap-2.5">
+          {TRILHAS.map((t) => {
+            const Icon = t.icon;
+            return (
+              <button
+                key={t.titulo}
+                onClick={() => navigate(`/estudos?modo=${t.modo}&ref=${encodeURIComponent(t.ref)}`)}
+                className="card p-4 text-left space-y-2.5"
+              >
+                <span className="w-9 h-9 rounded-[9px] flex items-center justify-center" style={{ background: 'var(--cor-oliva-bg)', color: 'var(--cor-oliva-claro)' }}>
+                  <Icon size={17} strokeWidth={1.75} />
+                </span>
+                <span className="block text-sm font-medium text-white leading-snug">{t.titulo}</span>
+                <span className="block text-xs text-[var(--cor-navy-texto-dim)] leading-snug">{t.descricao}</span>
+              </button>
+            );
+          })}
+        </div>
       </section>
 
       {!objective ? (

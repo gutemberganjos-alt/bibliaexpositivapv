@@ -1,9 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, Loader2, AlertCircle, Languages, ScrollText, Copy } from 'lucide-react';
+import { ChevronDown, Loader2, AlertCircle, Languages, ScrollText, Copy, Sparkles, RefreshCw } from 'lucide-react';
 import { BIBLE_BOOKS } from '../lib/bible-data';
 import type { BibleBook } from '../lib/bible-data';
 import { useToast } from '../contexts/ToastContext';
+import { gerarLexico } from '../lib/lexico';
+import type { LexicoResultado, PalavraLexico } from '../lib/lexico';
+
+/** Tradução usada pela leitura corrida hoje — Regra de Ouro: nunca mostrar um
+ * versículo sem indicar a tradução. As demais (ARA/NVI/NVT/NAA/KJV) exigem
+ * licenciar o texto de cada editora e ainda não estão disponíveis aqui. */
+const TRADUCAO_ATUAL = 'ARC';
 
 interface Verse {
   book_id: string;
@@ -34,9 +41,41 @@ export default function Bible() {
   const [selectedVerseIndex, setSelectedVerseIndex] = useState<number | null>(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 
+  // Laboratório do Original — análise das palavras-chave do versículo selecionado.
+  const [lexico, setLexico] = useState<LexicoResultado | null>(null);
+  const [lexicoLoading, setLexicoLoading] = useState(false);
+  const [lexicoError, setLexicoError] = useState('');
+  const [palavraAtiva, setPalavraAtiva] = useState<PalavraLexico | null>(null);
+  const [lexicoRetry, setLexicoRetry] = useState(0);
+
   const readingAreaRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { showToast } = useToast();
+
+  // Busca o léxico assim que um versículo é selecionado. Ignora respostas que
+  // chegam depois de o usuário já ter trocado de versículo (evita "race").
+  useEffect(() => {
+    if (selectedVerseIndex === null || !verses[selectedVerseIndex]) {
+      return;
+    }
+    const verse = verses[selectedVerseIndex];
+    const referencia = `${selectedBook.name} ${selectedChapter}:${verse.verse}`;
+    let ativo = true;
+    setLexico(null);
+    setPalavraAtiva(null);
+    setLexicoError('');
+    setLexicoLoading(true);
+    gerarLexico(referencia, verse.text, TRADUCAO_ATUAL)
+      .then((res) => {
+        if (!ativo) return;
+        setLexico(res);
+        setPalavraAtiva(res.palavras[0] ?? null);
+      })
+      .catch((e: Error) => { if (ativo) setLexicoError(e.message); })
+      .finally(() => { if (ativo) setLexicoLoading(false); });
+    return () => { ativo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedVerseIndex, lexicoRetry]);
 
   const fetchChapter = async () => {
     setLoading(true);
@@ -232,10 +271,13 @@ export default function Bible() {
           </div>
         ) : (
           <div className="space-y-4">
-            <h1 className="font-['Manrope'] text-2xl text-[var(--cor-dourado-claro)] text-center mb-8 border-b border-[var(--cor-borda)] pb-4">
+            <h1 className="font-['Manrope'] text-2xl text-[var(--cor-dourado-claro)] text-center mb-8 border-b border-[var(--cor-borda)] pb-4 flex items-center justify-center gap-2.5">
               {selectedBook.name} {selectedChapter}
+              <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border border-[var(--cor-dourado)] text-[var(--cor-dourado)] align-middle">
+                {TRADUCAO_ATUAL}
+              </span>
             </h1>
-            
+
             {verses.map((verse, index) => (
               <div 
                 key={verse.verse} 
@@ -248,6 +290,116 @@ export default function Bible() {
                 </p>
               </div>
             ))}
+
+            {/* Laboratório do Original — aparece ao selecionar um versículo. */}
+            {selectedVerseIndex !== null && verses[selectedVerseIndex] && (
+              <div className="mt-6 rounded-lg border border-[var(--cor-dourado)] bg-[var(--cor-fundo-card)] p-4 md:p-5">
+                <div className="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-[var(--cor-borda)]">
+                  <div className="flex items-center gap-2 font-['Manrope'] text-sm font-semibold text-[var(--cor-dourado)]">
+                    <Sparkles size={16} />
+                    Laboratório do Original
+                  </div>
+                  <span className="text-xs font-['Manrope'] text-[var(--cor-texto-dim)]">
+                    {selectedBook.name} {selectedChapter}:{verses[selectedVerseIndex].verse} ({TRADUCAO_ATUAL})
+                  </span>
+                </div>
+
+                {lexicoLoading && (
+                  <div className="flex items-center gap-2.5 text-sm text-[var(--cor-texto-medio)] font-['Manrope'] py-3">
+                    <Loader2 size={16} className="animate-spin text-[var(--cor-dourado)]" />
+                    Analisando o original deste versículo…
+                  </div>
+                )}
+
+                {!lexicoLoading && lexicoError && (
+                  <div className="flex items-center justify-between gap-3 py-3">
+                    <span className="text-sm text-[var(--cor-erro)]">{lexicoError}</span>
+                    <button
+                      onClick={() => setLexicoRetry((n) => n + 1)}
+                      className="btn-secondary shrink-0 flex items-center gap-1.5 text-xs py-1.5 px-3"
+                    >
+                      <RefreshCw size={13} /> Tentar de novo
+                    </button>
+                  </div>
+                )}
+
+                {!lexicoLoading && !lexicoError && lexico && (
+                  <div className="space-y-4">
+                    {/* Palavras-chave clicáveis */}
+                    <div className="flex flex-wrap gap-2">
+                      {lexico.palavras.map((p) => (
+                        <button
+                          key={`${p.pt}-${p.original}`}
+                          onClick={() => setPalavraAtiva(p)}
+                          className={`px-3 py-1.5 rounded-full border text-sm font-['Literata'] transition-colors ${
+                            palavraAtiva?.original === p.original
+                              ? 'border-[var(--cor-dourado)] bg-[var(--cor-dourado-bg)] text-[var(--cor-dourado-claro)]'
+                              : 'border-[var(--cor-borda)] text-[var(--cor-texto-medio)] hover:border-[var(--cor-borda-hover)]'
+                          }`}
+                        >
+                          {p.pt}
+                        </button>
+                      ))}
+                    </div>
+
+                    {palavraAtiva && (
+                      <div className="grid sm:grid-cols-2 gap-4 pt-2">
+                        {/* Coluna Original */}
+                        <div className="rounded-md p-3.5" style={{ background: 'var(--cor-fundo-hover)' }}>
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-[10px] font-['Manrope'] uppercase tracking-wider text-[var(--cor-texto-dim)]">Original</p>
+                            <span className="text-[10px] font-['Manrope'] font-bold uppercase px-1.5 py-0.5 rounded-full text-[var(--cor-dourado)] border border-[var(--cor-borda-hover)]">
+                              {palavraAtiva.idioma}
+                            </span>
+                          </div>
+                          <p
+                            dir={palavraAtiva.idioma === 'Hebraico' || palavraAtiva.idioma === 'Aramaico' ? 'rtl' : 'ltr'}
+                            className="text-2xl text-center py-2"
+                            style={{ fontFamily: "'Noto Sans Hebrew', 'Noto Sans', serif" }}
+                          >
+                            {palavraAtiva.original}
+                          </p>
+                          <p className="text-center text-sm italic text-[var(--cor-texto-dim)] mb-2">{palavraAtiva.translit}</p>
+                          <div className="flex items-center justify-center gap-2 mb-2">
+                            {palavraAtiva.strong && (
+                              <span className="text-[11px] font-['Manrope'] font-bold px-2 py-0.5 rounded-full text-[var(--cor-dourado-claro)] bg-[var(--cor-dourado-bg)]">
+                                {palavraAtiva.strong}
+                              </span>
+                            )}
+                            {palavraAtiva.ocorrencias > 0 && (
+                              <span className="text-[11px] text-[var(--cor-texto-dim)]">{palavraAtiva.ocorrencias}× no Testamento</span>
+                            )}
+                          </div>
+                          {palavraAtiva.classe && <p className="text-xs text-[var(--cor-texto-medio)] text-center">{palavraAtiva.classe}</p>}
+                          {palavraAtiva.raiz && (
+                            <p className="text-xs text-[var(--cor-texto-dim)] text-center mt-1.5 pt-1.5 border-t border-[var(--cor-borda)]">
+                              Raiz: {palavraAtiva.raiz}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Coluna Léxico */}
+                        <div className="rounded-md p-3.5" style={{ background: 'var(--cor-fundo-hover)' }}>
+                          <p className="text-[10px] font-['Manrope'] uppercase tracking-wider text-[var(--cor-texto-dim)] mb-2">Léxico</p>
+                          {palavraAtiva.significado && (
+                            <p className="text-sm text-[var(--cor-pergaminho)] leading-relaxed mb-3">{palavraAtiva.significado}</p>
+                          )}
+                          {palavraAtiva.nota && (
+                            <p className="text-xs leading-relaxed rounded p-2.5" style={{ background: 'var(--cor-oliva-bg, rgba(124,139,79,.12))', color: 'var(--cor-texto-medio)', borderLeft: '3px solid var(--cor-oliva, #7C8B4F)' }}>
+                              {palavraAtiva.nota}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    <p className="text-[11px] text-[var(--cor-texto-dim)] pt-2 border-t border-[var(--cor-borda)]">
+                      Análise gerada por IA a partir do texto massorético/crítico — use como ponto de partida de estudo, não como fonte lexical definitiva.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

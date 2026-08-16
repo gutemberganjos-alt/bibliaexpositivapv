@@ -82,3 +82,52 @@ export function nomeDoModo(id: string): string {
 export function nomeDoPublico(id: string): string {
   return PUBLICOS.find((p) => p.id === id)?.nome ?? id;
 }
+
+// ---------- Lente teológica da resposta (tela de Estudos) ----------
+// ids em sincronia com supabase/functions/gerar/prompts.ts (CORRENTES/TEOLOGOS).
+
+export interface OpcaoCorrente {
+  id: string;
+  nome: string;
+}
+
+export const CORRENTES: OpcaoCorrente[] = [
+  { id: 'calvinista', nome: 'Calvinista' },
+  { id: 'arminianista', nome: 'Arminianista' },
+];
+
+export interface OpcaoTeologo {
+  id: string;
+  nome: string;
+  grupo: string;
+}
+
+export const TEOLOGOS: OpcaoTeologo[] = [
+  { id: 'hernandes_dias_lopes', nome: 'Hernandes Dias Lopes', grupo: 'Tradicionais / Reformados' },
+  { id: 'augustus_nicodemus', nome: 'Augustus Nicodemus', grupo: 'Tradicionais / Reformados' },
+  { id: 'john_macarthur', nome: 'John MacArthur', grupo: 'Tradicionais / Reformados' },
+  { id: 'rc_sproul', nome: 'R.C. Sproul', grupo: 'Tradicionais / Reformados' },
+  { id: 'john_piper', nome: 'John Piper', grupo: 'Tradicionais / Reformados' },
+  { id: 'stanley_horton', nome: 'Stanley Horton', grupo: 'Pentecostais' },
+  { id: 'antonio_gilberto', nome: 'Antônio Gilberto', grupo: 'Pentecostais' },
+];
+
+export function gruposDeTeologos(): { grupo: string; itens: OpcaoTeologo[] }[] {
+  const grupos = Array.from(new Set(TEOLOGOS.map((t) => t.grupo)));
+  return grupos.map((grupo) => ({ grupo, itens: TEOLOGOS.filter((t) => t.grupo === grupo) }));
+}
+
+export function nomeDoTeologo(id?: string): string {
+  return TEOLOGOS.find((t) => t.id === id)?.nome ?? '';
+}
+
+/** Traduções aceitas para citar versículos ("Regra de Ouro"). ARC é o padrão do produto. */
+export const TRADUCOES = ['ARA', 'ARC', 'NVI', 'NVT', 'NAA', 'KJV'] as const;
+export type TraducaoId = (typeof TRADUCOES)[number];
+export const TRADUCAO_PADRAO: TraducaoId = 'ARC';
+
+/** Temas sugeridos no autocomplete do campo de pesquisa da tela de Estudos. */
+export const TEMAS_SUGERIDOS: string[] = [
+  'Soteriologia', 'Escatologia', 'Pneumatologia', 'Batismo no Espírito Santo',
+  'Predestinação', 'Dons Espirituais', 'Eclesiologia', 'Cristologia', 'Aliança', 'Justificação',
+];

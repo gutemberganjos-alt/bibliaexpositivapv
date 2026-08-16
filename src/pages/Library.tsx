@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { BookOpen, ChevronRight, FolderHeart, Loader2, Trash2 } from 'lucide-react';
 import { deleteStudy, fetchStudies, getCachedStudies } from '../lib/study-library';
 import type { SavedStudy } from '../lib/study-library';
@@ -16,6 +17,11 @@ export default function Library() {
   const [studies, setStudies] = useState<SavedStudy[]>(getCachedStudies);
   const [carregando, setCarregando] = useState(true);
   const [openStudy, setOpenStudy] = useState<SavedStudy | null>(null);
+  // "Continuar estudando" no Dashboard linka para /biblioteca?abrir=<id>: assim
+  // que a lista chega, abrimos o estudo direto em vez de deixar o usuário
+  // procurar de novo na lista.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const idParaAbrir = searchParams.get('abrir');
 
   useEffect(() => {
     let ativo = true;
@@ -24,6 +30,15 @@ export default function Library() {
       .finally(() => { if (ativo) setCarregando(false); });
     return () => { ativo = false; };
   }, []);
+
+  useEffect(() => {
+    if (!idParaAbrir || studies.length === 0) return;
+    const alvo = studies.find((s) => s.id === idParaAbrir);
+    if (alvo) {
+      setOpenStudy(alvo);
+      setSearchParams({}, { replace: true });
+    }
+  }, [idParaAbrir, studies, setSearchParams]);
 
   const remove = async (id: string) => {
     const antes = studies;

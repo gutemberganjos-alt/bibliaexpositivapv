@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bíblia Expositiva PV — Protótipo (Estudos · Bíblia · Dashboard)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Hebrew:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  * { font-family: 'Inter', -apple-system, sans-serif; }
+  .heb { font-family: 'Noto Sans Hebrew', serif; }
+  body { background:#0A1931; margin:0; }
+  ::-webkit-scrollbar { width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb { background:rgba(255,255,255,.12); border-radius:99px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  .noscroll::-webkit-scrollbar { display:none; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/plain" id="app-src">
+const { useState, useMemo } = React;
+
+/* ---------- Tokens (herdados do Pv-Rapido.html + acento Verde Oliva do briefing) ---------- */
+const C = {
+  bg: "#0A1931",
+  card: "#0F2038",
+  card2: "#132846",
+  border: "rgba(255,255,255,.08)",
+  borderSoft: "rgba(255,255,255,.05)",
+  gold: "#D4A574",
+  goldSoft: "rgba(212,165,116,.14)",
+  olive: "#8A9A5B",
+  oliveSoft: "rgba(138,154,91,.16)",
+  text: "#F5F3EF",
+  dim: "rgba(245,243,239,.58)",
+  faint: "rgba(245,243,239,.34)",
+};
+
+/* ---------- Ícones (svg simples, estilo linha) ---------- */
+const I = {
+  home: "M3 11.5 12 4l9 7.5M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9",
+  search: "M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM21 21l-4.3-4.3",
+  book: "M4 5.5C4 4.7 4.7 4 5.5 4H12v16H5.5A1.5 1.5 0 0 1 4 18.5v-13ZM20 5.5c0-.8-.7-1.5-1.5-1.5H12v16h6.5a1.5 1.5 0 0 0 1.5-1.5v-13Z",
+  library: "M4 4h4v16H4zM11 4h4v16h-4zM17.5 4.6l3.9 15.5-3.9 1-3.9-15.5z",
+  clock: "M12 7v5l3.2 3.2M20.5 12a8.5 8.5 0 1 1-17 0 8.5 8.5 0 0 1 17 0Z",
+  chev: "M9 5l7 7-7 7",
+  check: "M5 12.5 9.5 17 19 6.5",
+  star: "M12 2.5 15 9l7 .9-5.2 4.9L18.3 21 12 17.3 5.7 21l1.5-6.2L2 9.9 9 9z",
+  flame: "M12 2s5 4.5 5 9.5a5 5 0 1 1-10 0C7 6.5 12 2 12 2ZM10.5 13c0 1.2 1 2 1.7 2 1 0 1.8-.8 1.8-1.9 0-1.4-1.7-2.6-1.7-2.6s-1.8 1.4-1.8 2.5Z",
+  x: "M6 6l12 12M18 6 6 18",
+};
+function Icon({ d, size = 17, cls = "" }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={cls}>
+      <path d={d} />
+    </svg>
+  );
+}
+
+/* ---------- Dados de referência ---------- */
+const TEMAS = ["Soteriologia", "Escatologia", "Pneumatologia", "Batismo no Espírito Santo",
+  "Predestinação", "Dons Espirituais", "Eclesiologia", "Cristologia", "Aliança", "Justificação"];
+const FORMATOS = ["Estudo Bíblico", "Sermão", "Exegese", "Devocional", "Aula", "Roteiro de Grupo"];
+const PUBLICOS = ["Igreja", "Líderes", "Jovens", "Crianças"];
+const TRADUCOES = ["ARA", "ARC", "NVI", "NVT", "NAA", "KJV"];
+const TEOLOGOS = {
+  "Tradicionais / Reformados": ["Hernandes Dias Lopes", "Augustus Nicodemus", "John MacArthur", "R.C. Sproul", "John Piper"],
+  "Pentecostais": ["Stanley Horton", "Antônio Gilberto"],
+};
+
+const GEN11 = {
+  ref: "Gênesis 1:1",
+  traducoes: {
+    ARC: "No princípio criou Deus os céus e a terra.",
+    ARA: "No princípio, Deus criou os céus e a terra.",
+    NVI: "No princípio, Deus criou os céus e a terra.",
+    NVT: "No princípio, Deus criou os céus e a terra.",
+    NAA: "No princípio, Deus criou os céus e a terra.",
+    KJV: "In the beginning God created the heaven and the earth.",
+  },
+  palavras: [
+    { pt: "No", ok: false },
+    { pt: "princípio", ok: true, heb: "בְּרֵאשִׁית", translit: "bereshit", strong: "H7225",
+      classe: "Substantivo, feminino singular, com prefixo בְּ (\"em\")", ocorrencias: 5,
+      raiz: "רֹאשׁ (rosh — \"cabeça\")",
+      significado: "Início, começo, primeiro momento; do radical rosh (\"cabeça\", \"principal\").",
+      nota: "Bereshit não é apenas cronológico, mas teológico — indica que Deus é anterior e causa de tudo." },
+    { pt: "criou", ok: true, heb: "בָּרָא", translit: "bara", strong: "H1254",
+      classe: "Verbo Qal perfeito, 3ª pessoa masculino singular", ocorrencias: 54,
+      raiz: "ברא (bara)",
+      significado: "Criar a partir do nada; no AT é usado exclusivamente com Deus como sujeito.",
+      nota: "Nenhuma outra pessoa além de Deus é sujeito do verbo bara no hebraico bíblico." },
+    { pt: "Deus", ok: true, heb: "אֱלֹהִים", translit: "Elohim", strong: "H430",
+      classe: "Substantivo masculino plural (plural de majestade), sujeito", ocorrencias: 2600,
+      raiz: "אֵל (El)",
+      significado: "Deus; forma plural usada com verbo singular, indicando plenitude e majestade.",
+      nota: "O plural Elohim com verbo singular (bara) é um dos primeiros indícios da pluralidade na unidade de Deus." },
+    { pt: "os", ok: false },
+    { pt: "céus", ok: true, heb: "שָׁמַיִם", translit: "shamayim", strong: "H8064",
+      classe: "Substantivo masculino plural, objeto direto", ocorrencias: 421,
+      raiz: "— (sem forma singular)",
+      significado: "Céus, firmamento; forma plural sem singular correspondente em hebraico.",
+      nota: "Sempre plural em hebraico — não existe uma forma singular de \"céu\"." },
+    { pt: "e", ok: false },
+    { pt: "a", ok: false },
+    { pt: "terra", ok: true, heb: "אֶרֶץ", translit: "erets", strong: "H776",
+      classe: "Substantivo feminino singular, objeto direto", ocorrencias: 2504,
+      raiz: "—",
+      significado: "Terra, chão, território, o planeta.",
+      nota: "Aparece em par fixo com shamayim (céus) para expressar a totalidade da criação." },
+  ],
+};
+
+/* ---------- Primitivas visuais ---------- */
+function Card({ children, cls = "", pad = "p-5 md:p-6" }) {
+  return <div className={`rounded-[18px] border ${pad} ${cls}`} style={{ background: C.card, borderColor: C.border }}>{children}</div>;
+}
+function Eyebrow({ children }) {
+  return <div className="text-[10.5px] tracking-[0.22em] font-semibold uppercase" style={{ color: C.faint }}>{children}</div>;
+}
+function Pill({ active, onClick, children, accent = "gold" }) {
+  const bg = accent === "gold" ? C.gold : C.olive;
+  const tint = accent === "gold" ? C.goldSoft : C.oliveSoft;
+  return (
+    <button onClick={onClick}
+      className="px-3.5 py-2 rounded-full text-[13px] font-medium border transition whitespace-nowrap"
+      style={active
+        ? { background: tint, color: bg, borderColor: bg }
+        : { background: "rgba(255,255,255,.03)", color: C.dim, borderColor: C.border }}>
+      {children}
+    </button>
+  );
+}
+function Check({ label, checked, onClick, accent = "olive" }) {
+  const bg = accent === "olive" ? C.olive : C.gold;
+  return (
+    <button onClick={onClick} className="flex items-center gap-2.5 text-[13.5px] group" style={{ color: checked ? C.text : C.dim }}>
+      <span className="w-[18px] h-[18px] rounded-[5px] border flex items-center justify-center shrink-0 transition"
+        style={{ background: checked ? bg : "transparent", borderColor: checked ? bg : "rgba(255,255,255,.25)" }}>
+        {checked && <Icon d={I.check} size={12} cls="text-[#0A1931]" />}
+      </span>
+      {label}
+    </button>
+  );
+}
+function Tag({ children, color = C.gold, bg = C.goldSoft }) {
+  return <span className="text-[10.5px] font-semibold px-2 py-[3px] rounded-full" style={{ color, background: bg }}>{children}</span>;
+}
+
+/* ---------- Navegação lateral ---------- */
+function Sidebar({ tab, setTab }) {
+  const items = [
+    { id: "dashboard", label: "Início", icon: I.home },
+    { id: "estudos", label: "Estudos", icon: I.search },
+    { id: "biblia", label: "Bíblia", icon: I.book },
+    { id: "biblioteca", label: "Biblioteca", icon: I.library },
+  ];
+  return (
+    <aside className="hidden md:flex w-[220px] shrink-0 border-r flex-col py-6 px-3 gap-1" style={{ borderColor: C.border }}>
+      <div className="px-3 pb-6">
+        <div className="text-[15px] font-bold" style={{ color: C.text }}>Bíblia Expositiva</div>
+        <div className="text-[11px]" style={{ color: C.faint }}>PV · plataforma de estudo</div>
+      </div>
+      {items.map(it => (
+        <button key={it.id} onClick={() => setTab(it.id)}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[13.5px] font-medium transition"
+          style={tab === it.id ? { background: C.goldSoft, color: C.gold } : { color: C.dim }}>
+          <Icon d={it.icon} size={16} />
+          {it.label}
+        </button>
+      ))}
+      <div className="mt-auto px-3 pt-6 border-t" style={{ borderColor: C.borderSoft }}>
+        <div className="text-[11px]" style={{ color: C.faint }}>247 estudos salvos</div>
+        <div className="text-[11px]" style={{ color: C.faint }}>Plano Igreja</div>
+      </div>
+    </aside>
+  );
+}
+function TopBar({ crumbs }) {
+  return (
+    <div className="flex items-center justify-between px-6 md:px-8 pt-6 pb-4">
+      <div className="text-[12px] flex items-center gap-1.5" style={{ color: C.faint }}>
+        {crumbs.map((c, i) => (
+          <span key={i} className="flex items-center gap-1.5">
+            {i > 0 && <Icon d={I.chev} size={10} />}
+            <span style={i === crumbs.length - 1 ? { color: C.dim } : {}}>{c}</span>
+          </span>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <Tag color={C.gold} bg={C.goldSoft}>ARC padrão</Tag>
+        <div className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold"
+          style={{ background: C.gold, color: C.bg }}>GS</div>
+      </div>
+    </div>
+  );
+}
+
+/* ================= TELA 1 — ESTUDOS ================= */
+function TelaEstudos() {
+  const [q, setQ] = useState("");
+  const [showSug, setShowSug] = useState(false);
+  const [tema, setTema] = useState("Soteriologia");
+  const [formato, setFormato] = useState("Estudo Bíblico");
+  const [publico, setPublico] = useState("Igreja");
+  const [traducao, setTraducao] = useState("ARC");
+  const [correntes, setCorrentes] = useState(["Calvinista"]);
+  const [mostrarTag, setMostrarTag] = useState(true);
+  const [teologo, setTeologo] = useState("Hernandes Dias Lopes");
+
+  const sugestoes = useMemo(() => q ? TEMAS.filter(t => t.toLowerCase().includes(q.toLowerCase())) : TEMAS.slice(0, 6), [q]);
+  const toggleCorrente = (c) => setCorrentes(s => s.includes(c) ? s.filter(x => x !== c) : [...s, c]);
+
+  const referencia = q || "Atos 1:1-5";
+  const visao = mostrarTag && correntes.length ? correntes.join(" + ") : null;
+
+  return (
+    <div className="grid lg:grid-cols-[1.25fr_0.85fr] gap-6 px-6 md:px-8 pb-10">
+      <div className="space-y-5">
+        <div>
+          <Eyebrow>Gerador de estudo</Eyebrow>
+          <h1 className="text-[26px] font-extrabold mt-1" style={{ color: C.text }}>Crie um estudo sob medida</h1>
+          <p className="text-[13.5px] mt-1" style={{ color: C.dim }}>Escolha o texto, o formato, o público e a lente teológica da resposta.</p>
+        </div>
+
+        {/* Campo de pesquisa com autocomplete */}
+        <Card pad="p-4" cls="relative">
+          <div className="flex items-center gap-3">
+            <Icon d={I.search} size={18} cls="shrink-0" />
+            <input value={q} onChange={e => { setQ(e.target.value); setShowSug(true); }}
+              onFocus={() => setShowSug(true)} onBlur={() => setTimeout(() => setShowSug(false), 150)}
+              placeholder="Texto, tema ou referência (ex: Romanos 8, Soteriologia...)"
+              className="w-full bg-transparent outline-none text-[15px]" style={{ color: C.text }} />
+            <select value={traducao} onChange={e => setTraducao(e.target.value)}
+              className="text-[12px] font-semibold rounded-full px-3 py-1.5 border outline-none shrink-0"
+              style={{ background: "transparent", color: C.gold, borderColor: C.gold }}>
+              {TRADUCOES.map(t => <option key={t} value={t} style={{ color: "#000" }}>{t}</option>)}
+            </select>
+          </div>
+          {showSug && (
+            <div className="absolute left-4 right-4 top-[58px] rounded-[12px] border overflow-hidden z-20"
+              style={{ background: C.card2, borderColor: C.border }}>
+              {sugestoes.length === 0 && <div className="px-4 py-3 text-[13px]" style={{ color: C.faint }}>Nenhum tema encontrado.</div>}
+              {sugestoes.map(s => (
+                <button key={s} onMouseDown={() => { setQ(s); setTema(s); setShowSug(false); }}
+                  className="w-full text-left px-4 py-2.5 text-[13.5px] hover:opacity-100 transition flex items-center justify-between"
+                  style={{ color: C.dim }}>
+                  {s}
+                  <span style={{ color: C.faint }} className="text-[11px]">tema</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2 flex-wrap mt-3.5 pt-3.5 border-t" style={{ borderColor: C.borderSoft }}>
+            {TEMAS.slice(0, 6).map(t => (
+              <Pill key={t} active={tema === t} onClick={() => { setTema(t); setQ(t); }}>{t}</Pill>
+            ))}
+          </div>
+        </Card>
+
+        {/* Formato */}
+        <Card>
+          <Eyebrow>Formato</Eyebrow>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-3">
+            {FORMATOS.map(f => (
+              <button key={f} onClick={() => setFormato(f)}
+                className="px-3 py-2.5 rounded-[10px] text-[13px] font-medium border text-left transition"
+                style={formato === f ? { background: C.goldSoft, color: C.gold, borderColor: C.gold } : { color: C.dim, borderColor: C.border }}>
+                {f}
+              </button>
+            ))}
+          </div>
+        </Card>
+
+        {/* Publico */}
+        <Card>
+          <Eyebrow>Público</Eyebrow>
+          <div className="flex gap-2 flex-wrap mt-3">
+            {PUBLICOS.map(p => <Pill key={p} active={publico === p} onClick={() => setPublico(p)}>{p}</Pill>)}
+          </div>
+        </Card>
+
+        {/* Corrente + Perspectiva */}
+        <div className="grid md:grid-cols-2 gap-5">
+          <Card>
+            <Eyebrow>Corrente teológica</Eyebrow>
+            <div className="mt-3.5 space-y-3">
+              <Check label="Calvinista" checked={correntes.includes("Calvinista")} onClick={() => toggleCorrente("Calvinista")} />
+              <Check label="Arminianista" checked={correntes.includes("Arminianista")} onClick={() => toggleCorrente("Arminianista")} />
+              <div className="pt-2.5 mt-1 border-t" style={{ borderColor: C.borderSoft }}>
+                <Check label="Mostrar tag na resposta" checked={mostrarTag} onClick={() => setMostrarTag(v => !v)} accent="gold" />
+              </div>
+            </div>
+          </Card>
+          <Card>
+            <Eyebrow>Perspectiva do teólogo</Eyebrow>
+            <p className="text-[11.5px] mt-1" style={{ color: C.faint }}>Opcional — "Responder como:"</p>
+            <select value={teologo} onChange={e => setTeologo(e.target.value)}
+              className="w-full mt-3 rounded-[10px] border px-3 py-2.5 text-[13.5px] outline-none"
+              style={{ background: "rgba(255,255,255,.03)", borderColor: C.border, color: C.text }}>
+              <option value="" style={{ color: "#000" }}>Nenhuma (resposta neutra)</option>
+              {Object.entries(TEOLOGOS).map(([grupo, nomes]) => (
+                <optgroup key={grupo} label={grupo} style={{ color: "#000" }}>
+                  {nomes.map(n => <option key={n} value={n} style={{ color: "#000" }}>{n}</option>)}
+                </optgroup>
+              ))}
+            </select>
+          </Card>
+        </div>
+
+        <button className="w-full py-3.5 rounded-full text-[14.5px] font-bold" style={{ background: C.gold, color: C.bg }}>
+          Gerar estudo
+        </button>
+      </div>
+
+      {/* Sidebar de contexto */}
+      <div className="space-y-5 lg:sticky lg:top-6 self-start">
+        <Card cls="space-y-3.5">
+          <Eyebrow>Prévia do cabeçalho</Eyebrow>
+          <div className="rounded-[12px] px-4 py-3 text-[12.5px] leading-relaxed" style={{ background: C.card2, color: C.dim }}>
+            <span style={{ color: C.text, fontWeight: 600 }}>{referencia} ({traducao})</span>
+            {visao && <> {" "}| Visão: <span style={{ color: C.olive, fontWeight: 600 }}>{visao}</span></>}
+            {teologo && <> {" "}| Perspectiva: <span style={{ color: C.gold, fontWeight: 600 }}>{teologo}</span></>}
+            {" "}| Público: <span style={{ color: C.text, fontWeight: 600 }}>{publico}</span>
+          </div>
+          <p className="text-[11.5px]" style={{ color: C.faint }}>Toda resposta gerada leva este cabeçalho fixo, conforme a regra de identificação.</p>
+        </Card>
+        <Card cls="space-y-3">
+          <Eyebrow>Estudos recentes</Eyebrow>
+          {[["Romanos 8 — A vida no Espírito", "Sermão · Calvinista"], ["Atos 2 — Pentecostes", "Aula · Pentecostal"], ["João 3 — Novo nascimento", "Devocional"]].map(([t, s]) => (
+            <div key={t} className="flex items-center justify-between py-2 border-b last:border-0" style={{ borderColor: C.borderSoft }}>
+              <div>
+                <div className="text-[13px] font-medium" style={{ color: C.text }}>{t}</div>
+                <div className="text-[11px]" style={{ color: C.faint }}>{s}</div>
+              </div>
+              <Icon d={I.chev} size={14} cls="opacity-40" />
+            </div>
+          ))}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ================= TELA 2 — BÍBLIA · LABORATÓRIO DO ORIGINAL ================= */
+function TelaBiblia() {
+  const [livro, setLivro] = useState("Gênesis");
+  const [cap, setCap] = useState("1");
+  const [trad, setTrad] = useState("ARC");
+  const [sel, setSel] = useState(GEN11.palavras.find(p => p.pt === "princípio"));
+
+  const texto = GEN11.traducoes[trad];
+
+  return (
+    <div className="px-6 md:px-8 pb-10 space-y-5">
+      <div>
+        <Eyebrow>Laboratório do Original</Eyebrow>
+        <h1 className="text-[26px] font-extrabold mt-1" style={{ color: C.text }}>Texto, original e léxico lado a lado</h1>
+        <p className="text-[13.5px] mt-1" style={{ color: C.dim }}>Clique em uma palavra do versículo para atualizar as colunas de original e léxico.</p>
+      </div>
+
+      {/* Filtros */}
+      <Card pad="p-4">
+        <div className="flex flex-wrap gap-3 items-center">
+          <select value={livro} onChange={e => setLivro(e.target.value)}
+            className="rounded-[10px] border px-3 py-2 text-[13px] outline-none" style={{ background: "rgba(255,255,255,.03)", borderColor: C.border, color: C.text }}>
+            {["Gênesis", "Êxodo", "Salmos", "João", "Atos", "Romanos"].map(l => <option key={l} value={l} style={{ color: "#000" }}>{l}</option>)}
+          </select>
+          <select value={cap} onChange={e => setCap(e.target.value)}
+            className="rounded-[10px] border px-3 py-2 text-[13px] outline-none w-20" style={{ background: "rgba(255,255,255,.03)", borderColor: C.border, color: C.text }}>
+            {Array.from({ length: 10 }, (_, i) => i + 1).map(n => <option key={n} value={n} style={{ color: "#000" }}>{n}</option>)}
+          </select>
+          <div className="flex gap-1.5 ml-auto flex-wrap">
+            {TRADUCOES.map(t => <Pill key={t} active={trad === t} onClick={() => setTrad(t)}>{t}</Pill>)}
+          </div>
+        </div>
+        {(livro !== "Gênesis" || cap !== "1") && (
+          <p className="text-[11.5px] mt-3" style={{ color: C.faint }}>Protótipo interativo disponível para Gênesis 1:1 — os demais livros/capítulos serão ligados ao mesmo padrão na versão final.</p>
+        )}
+      </Card>
+
+      {/* 3 colunas */}
+      <div className="grid lg:grid-cols-3 gap-5">
+        <Card cls="space-y-4">
+          <div className="flex items-center justify-between">
+            <Eyebrow>Texto</Eyebrow>
+            <Tag color={C.gold} bg={C.goldSoft}>{trad}</Tag>
+          </div>
+          <h2 className="text-[17px] font-bold" style={{ color: C.text }}>{GEN11.ref} <span style={{ color: C.gold }}>({trad})</span></h2>
+          <p className="text-[16.5px] leading-[1.9]">
+            {GEN11.palavras.map((p, idx) => {
+              const isSel = sel && sel.pt === p.pt;
+              return (
+                <span key={idx}
+                  onClick={() => p.ok && setSel(p)}
+                  className={p.ok ? "cursor-pointer transition rounded px-0.5" : ""}
+                  style={{
+                    color: p.ok ? (isSel ? C.gold : C.text) : C.faint,
+                    background: isSel ? C.goldSoft : "transparent",
+                    borderBottom: p.ok ? `1.5px dotted ${isSel ? C.gold : "rgba(212,165,116,.4)"}` : "none",
+                  }}>
+                  {p.pt}{" "}
+                </span>
+              );
+            })}
+          </p>
+          {trad !== "ARC" && <p className="text-[11px]" style={{ color: C.faint }}>Palavras clicáveis seguem a base ARC; o texto acima muda com a tradução selecionada.</p>}
+        </Card>
+
+        <Card cls="space-y-4">
+          <div className="flex items-center justify-between">
+            <Eyebrow>Original</Eyebrow>
+            <Tag color={C.olive} bg={C.oliveSoft}>AT · Hebraico</Tag>
+          </div>
+          {sel ? (
+            <>
+              <div className="text-center py-4">
+                <div className="heb text-[38px]" style={{ color: C.text }} dir="rtl">{sel.heb}</div>
+                <div className="text-[13px] mt-2 italic" style={{ color: C.dim }}>{sel.translit}</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Tag color={C.gold} bg={C.goldSoft}>{sel.strong}</Tag>
+                <span className="text-[11.5px]" style={{ color: C.faint }}>{sel.ocorrencias}× no AT</span>
+              </div>
+              <div className="text-[12.5px] leading-relaxed" style={{ color: C.dim }}>{sel.classe}</div>
+              <div className="text-[12.5px] pt-3 border-t" style={{ borderColor: C.borderSoft, color: C.dim }}>
+                <span style={{ color: C.faint }}>Raiz:</span> {sel.raiz}
+              </div>
+            </>
+          ) : <p className="text-[13px]" style={{ color: C.faint }}>Clique em uma palavra do texto.</p>}
+        </Card>
+
+        <Card cls="space-y-4">
+          <Eyebrow>Léxico</Eyebrow>
+          {sel && (
+            <>
+              <p className="text-[13.5px] leading-relaxed" style={{ color: C.text }}>{sel.significado}</p>
+              <div className="rounded-[12px] px-4 py-3 text-[12.5px] leading-relaxed" style={{ background: C.oliveSoft, color: C.text, borderLeft: `3px solid ${C.olive}` }}>
+                <span className="font-semibold" style={{ color: C.olive }}>Nota exegética — </span>{sel.nota}
+              </div>
+            </>
+          )}
+          <div className="pt-3 border-t" style={{ borderColor: C.borderSoft }}>
+            <div className="text-[11px] font-semibold mb-2" style={{ color: C.faint }}>COMPARAÇÃO ENTRE TRADUÇÕES</div>
+            <div className="space-y-1.5">
+              {TRADUCOES.map(t => (
+                <div key={t} className="flex gap-2 text-[12px]">
+                  <span className="font-semibold w-9 shrink-0" style={{ color: t === trad ? C.gold : C.faint }}>{t}</span>
+                  <span style={{ color: t === trad ? C.text : C.faint }}>{GEN11.traducoes[t]}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ================= TELA 3 — DASHBOARD ================= */
+function TelaDashboard({ setTab }) {
+  const continuar = [
+    { t: "Romanos 8 — A vida no Espírito", pct: 72, sub: "Sermão · atualizado ontem" },
+    { t: "Escatologia — Milênio e Segunda Vinda", pct: 40, sub: "Estudo bíblico · atualizado há 3 dias" },
+  ];
+  const trilhas = [
+    { t: "Fundamentos da Soteriologia", n: 12, icon: I.book },
+    { t: "Escatologia Comparada", n: 8, icon: I.clock },
+    { t: "Introdução à Pneumatologia", n: 10, icon: I.flame },
+  ];
+  return (
+    <div className="px-6 md:px-8 pb-10 space-y-6">
+      <div>
+        <Eyebrow>Painel</Eyebrow>
+        <h1 className="text-[26px] font-extrabold mt-1" style={{ color: C.text }}>Bem-vindo de volta, Gutemberg</h1>
+        <p className="text-[13.5px] mt-1" style={{ color: C.dim }}>Sexta, 15 de agosto de 2026</p>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+        {[["247", "Estudos salvos"], ["66", "Livros disponíveis"], ["6", "Traduções"], ["12k", "Notas da comunidade"]].map(([n, l]) => (
+          <Card key={l} pad="p-4">
+            <div className="text-[22px] font-extrabold" style={{ color: C.gold }}>{n}</div>
+            <div className="text-[11.5px] mt-1" style={{ color: C.dim }}>{l}</div>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid lg:grid-cols-[1.4fr_0.9fr] gap-6">
+        <div className="space-y-6">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <Eyebrow>Continuar estudando</Eyebrow>
+              <button onClick={() => setTab("estudos")} className="text-[12px] font-semibold" style={{ color: C.gold }}>ver todos →</button>
+            </div>
+            <div className="space-y-3">
+              {continuar.map(c => (
+                <Card key={c.t} pad="p-4 md:p-4" cls="cursor-pointer">
+                  <div className="flex items-center justify-between">
+                    <div className="text-[14px] font-semibold" style={{ color: C.text }}>{c.t}</div>
+                    <span className="text-[12px] font-bold" style={{ color: C.gold }}>{c.pct}%</span>
+                  </div>
+                  <div className="text-[11.5px] mt-1" style={{ color: C.faint }}>{c.sub}</div>
+                  <div className="h-1.5 rounded-full mt-3 overflow-hidden" style={{ background: "rgba(255,255,255,.08)" }}>
+                    <div className="h-full rounded-full" style={{ width: `${c.pct}%`, background: C.gold }} />
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <Eyebrow>Trilhas recomendadas</Eyebrow>
+            <div className="grid sm:grid-cols-3 gap-3.5 mt-3">
+              {trilhas.map(tr => (
+                <Card key={tr.t} pad="p-4" cls="space-y-3 cursor-pointer">
+                  <div className="w-9 h-9 rounded-[9px] flex items-center justify-center" style={{ background: C.oliveSoft, color: C.olive }}>
+                    <Icon d={tr.icon} size={16} />
+                  </div>
+                  <div className="text-[13.5px] font-semibold leading-snug" style={{ color: C.text }}>{tr.t}</div>
+                  <div className="text-[11.5px]" style={{ color: C.faint }}>{tr.n} estudos</div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-5">
+          <Card cls="space-y-3.5">
+            <div className="flex items-center justify-between">
+              <Eyebrow>Versículo do dia · original</Eyebrow>
+              <Tag color={C.gold} bg={C.goldSoft}>ARC</Tag>
+            </div>
+            <div>
+              <div className="text-[13px] font-semibold" style={{ color: C.text }}>{GEN11.ref} (ARC)</div>
+              <p className="text-[14.5px] mt-1.5 leading-relaxed" style={{ color: C.dim }}>{GEN11.traducoes.ARC}</p>
+            </div>
+            <div className="rounded-[12px] px-4 py-3 text-center" style={{ background: C.card2 }}>
+              <div className="heb text-[22px]" style={{ color: C.text }} dir="rtl">בְּרֵאשִׁית בָּרָא אֱלֹהִים</div>
+              <div className="text-[11.5px] mt-1 italic" style={{ color: C.faint }}>bereshit bara Elohim...</div>
+            </div>
+            <button onClick={() => setTab("biblia")} className="w-full py-2.5 rounded-full text-[12.5px] font-semibold border"
+              style={{ borderColor: C.gold, color: C.gold }}>Abrir no Laboratório →</button>
+          </Card>
+          <Card cls="space-y-3">
+            <Eyebrow>Biblioteca</Eyebrow>
+            <p className="text-[12.5px]" style={{ color: C.dim }}>Você tem <span style={{ color: C.gold, fontWeight: 700 }}>247 estudos</span> salvos.</p>
+            <button onClick={() => setTab("biblioteca")} className="text-[12.5px] font-semibold" style={{ color: C.olive }}>Ver biblioteca →</button>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ================= TELA 4 — BIBLIOTECA (extra, item 5 do briefing) ================= */
+function TelaBiblioteca() {
+  const [busca, setBusca] = useState("");
+  const [tipo, setTipo] = useState("Todos");
+  const tipos = ["Todos", "Sermão", "Exegese", "Estudo Bíblico", "Devocional"];
+  const itens = [
+    ["Romanos — Comentário Expositivo", "Estudo Bíblico"],
+    ["A Soberania de Deus na Salvação", "Sermão"],
+    ["Êxodo 1-15: Análise do Original", "Exegese"],
+    ["30 Dias em Salmos", "Devocional"],
+    ["Atos dos Apóstolos — Panorama", "Estudo Bíblico"],
+    ["O Sermão do Monte", "Sermão"],
+  ];
+  const filtrados = itens.filter(([t, ty]) => (tipo === "Todos" || ty === tipo) && t.toLowerCase().includes(busca.toLowerCase()));
+  return (
+    <div className="px-6 md:px-8 pb-10 space-y-5">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <Eyebrow>Biblioteca</Eyebrow>
+          <h1 className="text-[26px] font-extrabold mt-1" style={{ color: C.text }}>Seus estudos salvos</h1>
+        </div>
+        <Tag color={C.gold} bg={C.goldSoft}>Você tem 247 estudos salvos</Tag>
+      </div>
+      <Card pad="p-4">
+        <div className="flex items-center gap-3">
+          <Icon d={I.search} size={17} />
+          <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar na biblioteca..."
+            className="w-full bg-transparent outline-none text-[14px]" style={{ color: C.text }} />
+        </div>
+        <div className="flex gap-2 flex-wrap mt-3.5 pt-3.5 border-t" style={{ borderColor: C.borderSoft }}>
+          {tipos.map(t => <Pill key={t} active={tipo === t} onClick={() => setTipo(t)}>{t}</Pill>)}
+        </div>
+      </Card>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filtrados.map(([t, ty]) => (
+          <Card key={t} pad="p-4" cls="space-y-3 cursor-pointer">
+            <div className="h-24 rounded-[10px] flex items-center justify-center text-[11px] font-semibold"
+              style={{ background: C.card2, color: C.faint }}>CAPA</div>
+            <div className="text-[13.5px] font-semibold leading-snug" style={{ color: C.text }}>{t}</div>
+            <Tag color={C.olive} bg={C.oliveSoft}>{ty}</Tag>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ================= APP ================= */
+function App() {
+  const [tab, setTab] = useState("dashboard");
+  const crumbsMap = {
+    dashboard: ["Início"],
+    estudos: ["Início", "Estudos"],
+    biblia: ["Início", "Bíblia", "Laboratório do Original"],
+    biblioteca: ["Início", "Biblioteca"],
+  };
+  return (
+    <div className="min-h-screen flex" style={{ background: C.bg }}>
+      <Sidebar tab={tab} setTab={setTab} />
+      <div className="flex-1 min-w-0">
+        <TopBar crumbs={crumbsMap[tab]} />
+        {tab === "dashboard" && <TelaDashboard setTab={setTab} />}
+        {tab === "estudos" && <TelaEstudos />}
+        {tab === "biblia" && <TelaBiblia />}
+        {tab === "biblioteca" && <TelaBiblioteca />}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+<script>
+  // Transpila o bloco JSX acima manualmente forçando o runtime clássico
+  // (React.createElement), compatível com os builds UMD de React/ReactDOM
+  // carregados por CDN — evita depender de "react/jsx-runtime" via import.
+  var src = document.getElementById("app-src").textContent;
+  var out = Babel.transform(src, { presets: [["react", { runtime: "classic" }]] }).code;
+  new Function("React", "ReactDOM", out)(React, ReactDOM);
+</script>
+</body>
+</html>
